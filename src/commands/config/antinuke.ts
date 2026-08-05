@@ -40,8 +40,6 @@ export default {
                         .setRequired(true)
                         .addChoices({ name: 'عضو', value: 'user' }, { name: 'رتبة', value: 'role' })
                 )
-                .addUserOption((opt) => opt.setName('عضو').setDescription('العضو المراد إضافته/إزالته'))
-                .addRoleOption((opt) => opt.setName('رتبة').setDescription('الرتبة المراد إضافتها/إزالتها'))
                 .addStringOption((opt) =>
                     opt
                         .setName('إجراء')
@@ -49,6 +47,8 @@ export default {
                         .setRequired(true)
                         .addChoices({ name: 'إضافة', value: 'add' }, { name: 'إزالة', value: 'remove' })
                 )
+                .addUserOption((opt) => opt.setName('عضو').setDescription('العضو المراد إضافته/إزالته'))
+                .addRoleOption((opt) => opt.setName('رتبة').setDescription('الرتبة المراد إضافتها/إزالتها'))
         )
         .addSubcommand((sub) => sub.setName('status').setDescription('عرض حالة الحماية من التدمير')),
 
