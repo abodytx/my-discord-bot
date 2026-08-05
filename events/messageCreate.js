@@ -1,34 +1,57 @@
 // =====================================================
-// حدث "messageCreate": نظام حماية مصغر
-// - Anti-Spam: يحذف الرسائل المتكررة بسرعة من نفس العضو
-// - Anti-Link: يحذف الروابط والإعلانات غير المصرح بها
+// حدث "messageCreate":
+// - Anti-Spam: حذف الرسائل المتكررة من نفس العضو
+// - Anti-Link: حذف الروابط غير المصرح بها
+// - نظام XP: منح نقاط خبرة للأعضاء (إذا كان مفعلاً)
 // =====================================================
 
 const { PermissionFlagsBits } = require('discord.js');
 const { getGuildSettings } = require('../utils/settings');
-const { errorEmbed } = require('../utils/embeds');
+const { errorEmbed, successEmbed } = require('../utils/embeds');
+const { addXp, getLevelInfo } = require('../utils/levels');
 
-const SPAM_LIMIT = 5;        // عدد الرسائل المسموح بها
-const SPAM_INTERVAL = 7000;  // المدة الزمنية (7 ثوانٍ)
+const SPAM_LIMIT = 5;
+const SPAM_INTERVAL = 7000;
 
 module.exports = {
     name: 'messageCreate',
     async execute(message, client) {
-        // تجاهل رسائل البوتات ورسائل الخاص
         if (message.author.bot || !message.guild) return;
 
-        // تجاهل المشرفين من أنظمة الحماية
-        if (message.member?.permissions.has(PermissionFlagsBits.ManageMessages)) return;
+        const settings = getGuildSettings(message.guild.id) || {};
+        const isStaff = message.member?.permissions.has(PermissionFlagsBits.ManageMessages);
 
-        let settings = {};
-        try {
-            settings = getGuildSettings(message.guild.id) || {};
-        } catch (e) {
-            settings = {};
+        // ------------------ نظام XP ------------------
+        if (settings.levelSystem && !isStaff) {
+            const last = client.xpTracker.get(message.author.id) || 0;
+            const now = Date.now();
+            // نقاط كل 60 ثانية لكل عضو لتجنب السبام
+            if (now - last > 60_000) {
+                client.xpTracker.set(message.author.id, now);
+                const xpGained = Math.floor(Math.random() * 10) + 5;
+                const { leveledUp, oldLevel, newLevel } = addXp(message.guild.id, message.author.id, xpGained);
+
+                if (leveledUp) {
+                    try {
+                        const levelChannel = settings.levelUpChannelId
+                            ? (message.guild.channels.cache.get(settings.levelUpChannelId) || null)
+                            : null;
+                        const channel = levelChannel || message.channel;
+                        const { level } = getLevelInfo(message.guild.id, message.author.id);
+                        await channel.send({
+                            embeds: [successEmbed('🎉 مستوى جديد!', `${message.author} وصل إلى المستوى **${level}**!`)]
+                        });
+                    } catch (err) {
+                        console.error('خطأ في إرسال رسالة المستوى:', err);
+                    }
+                }
+            }
         }
 
+        // تجاهل أعضاء الإدارة من أنظمة الحماية
+        if (isStaff) return;
+
         // ------------------ Anti-Link ------------------
-        // إنشاء regex محلي تجنباً لمشكلة lastIndex مع الفلاج g
         const linkRegex = /(https?:\/\/[^\s]+|discord\.gg\/[^\s]+|www\.[^\s]+)/i;
 
         if (settings.antiLink && linkRegex.test(message.content)) {
@@ -52,7 +75,6 @@ module.exports = {
             const record = client.spamTracker.get(key) || { count: 0, firstMessageAt: now };
 
             if (now - record.firstMessageAt > SPAM_INTERVAL) {
-                // بدء نافذة زمنية جديدة
                 client.spamTracker.set(key, { count: 1, firstMessageAt: now });
             } else {
                 record.count++;

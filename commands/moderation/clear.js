@@ -12,6 +12,7 @@ module.exports = {
         .addIntegerOption(opt => opt.setName('العدد').setDescription('عدد الرسائل (1-100)').setMinValue(1).setMaxValue(100).setRequired(true))
         .addUserOption(opt => opt.setName('من_عضو').setDescription('حذف رسائل عضو معين فقط (اختياري)').setRequired(false))
         .setDefaultMemberPermissions(PermissionFlagsBits.ManageMessages),
+    cooldown: 5,
 
     async execute(interaction) {
         if (!interaction.member.permissions.has(PermissionFlagsBits.ManageMessages)) {
@@ -24,21 +25,41 @@ module.exports = {
         await interaction.deferReply({ ephemeral: true });
 
         try {
-            let messages = await interaction.channel.messages.fetch({ limit: 100 });
+            const collected = [];
+            let lastId = null;
 
-            if (targetUser) {
-                messages = messages.filter(m => m.author.id === targetUser.id).first(amount);
-            } else {
-                messages = messages.first(amount);
+            // جلب الرسائل على دفعات حتى الوصول للعدد المطلوب
+            while (collected.length < amount) {
+                const options = { limit: Math.min(100, amount - collected.length) };
+                if (lastId) options.before = lastId;
+
+                const batch = await interaction.channel.messages.fetch(options);
+                if (!batch.size) break;
+
+                const usable = targetUser
+                    ? batch.filter(m => m.author.id === targetUser.id)
+                    : batch;
+
+                collected.push(...usable.values());
+                lastId = batch.last().id;
             }
 
-            // ديسكورد لا يسمح بحذف الرسائل الأقدم من 14 يوم عبر bulkDelete
-            const deleted = await interaction.channel.bulkDelete(messages, true);
+            const toDelete = collected.slice(0, amount);
+            const deleted = await interaction.channel.bulkDelete(toDelete, true);
 
-            await interaction.editReply({ embeds: [successEmbed('تم التنظيف', `تم حذف **${deleted.size}** رسالة بنجاح.`)] });
+            await interaction.editReply({
+                embeds: [successEmbed(
+                    'تم التنظيف',
+                    targetUser
+                        ? `تم حذف **${deleted.size}** رسالة من **${targetUser.tag}**.`
+                        : `تم حذف **${deleted.size}** رسالة بنجاح.`
+                )]
+            });
         } catch (err) {
             console.error(err);
-            await interaction.editReply({ embeds: [errorEmbed('فشلت العملية', 'تعذر حذف الرسائل. قد تكون بعضها أقدم من 14 يوماً.')] });
+            await interaction.editReply({
+                embeds: [errorEmbed('فشلت العملية', 'تعذر حذف الرسائل. قد تكون بعضها أقدم من 14 يوماً (لا يمكن حذفها دفعة واحدة).')]
+            });
         }
     }
 };

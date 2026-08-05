@@ -1,17 +1,19 @@
 {
   "name": "pro-discord-bot",
-  "version": "1.0.0",
-  "description": "بوت ديسكورد شامل منافس لـ ProBot - مجاني بالكامل",
+  "version": "2.0.0",
+  "description": "بوت ديسكورد شامل (Moderation + Music + Tickets + Levels + Logs) منافس لـ ProBot - مجاني بالكامل",
   "main": "index.js",
   "type": "commonjs",
   "scripts": {
     "start": "node index.js",
-    "deploy": "node deploy-commands.js"
+    "deploy": "node deploy-commands.js",
+    "dev": "node --watch index.js"
   },
   "dependencies": {
     "@discord-player/extractor": "^7.2.0",
     "@discordjs/voice": "^0.19.2",
     "discord-player": "^7.2.0",
+    "discord-player-youtube": "^0.8.4",
     "discord.js": "^14.14.1",
     "dotenv": "^16.4.5",
     "express": "^5.2.1",

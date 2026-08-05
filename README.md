@@ -1,6 +1,21 @@
 # 🤖 بوت ديسكورد شامل (منافس ProBot) — مجاني 100%
 
-بوت متكامل مبني بـ **Discord.js v14** يدعم: الترحيب الاحترافي، الرتبة التلقائية، إدارة الرتب الجماعية، الإدارة والحماية (Anti-Spam/Anti-Link)، نظام التذاكر، ومعلومات السيرفر/الأعضاء — كل ذلك عبر Slash Commands و Embeds احترافية.
+بوت متكامل مبني بـ **Discord.js v14** + **discord-player v7** يشمل: الإدارة والحماية (Anti-Spam/Anti-Link)، الترحيب والوداع الاحترافي، الرتبة التلقائية، الرتب الجماعية، نظام التذاكر، نظام المستويات (XP)، اللوقات الكاملة، مشغل موسيقى احترافي (YouTube / Spotify / SoundCloud...)، ولوحة تحكم ويب كاملة — كل ذلك عبر Slash Commands و Embeds احترافية.
+
+---
+
+## ✨ المميزات
+
+| النظام | الوصف |
+|---|---|
+| 🛡️ الإدارة | ban, kick, mute/timeout, unban, clear, lock, unlock, slowmode, warn, warnings, unwarn |
+| 🎵 الموسيقى | play, skip, stop, pause, resume, nowplaying, queue, volume + أزرار تحكم تفاعلية |
+| 🎫 التذاكر | فتح/إغلاق/استلام التذاكر تلقائياً داخل فئة مخصصة |
+| 📈 المستويات | نظام XP تلقائي + rank + leaderboard + رسائل ترقي |
+| 📝 اللوقات | حذف/تعديل الرسائل، إنشاء/حذف القنوات والرتب، انضمام/مغادرة الأعضاء |
+| 👋 الترحيب | ترحيب + وداع مخصصان برسائل قابلة للتخصيص + رتبة تلقائية |
+| 🛡️ الحماية | Anti-Spam و Anti-Link قابلان للتفعيل لكل سيرفر |
+| 🌐 لوحة تحكم | Web Dashboard محمية بكلمة مرور للتحكم الكامل بالبوت |
 
 ---
 
@@ -8,139 +23,117 @@
 
 ```
 discord-bot/
-├── index.js               ← الملف الرئيسي لتشغيل البوت
+├── index.js               ← الملف الرئيسي (البوت + لوحة التحكم + الموسيقى)
 ├── deploy-commands.js      ← ملف تسجيل الأوامر لدى ديسكورد
 ├── package.json
 ├── .env.example            ← انسخه وأعد تسميته .env
 ├── commands/
-│   ├── moderation/          (ban, kick, mute, clear)
-│   ├── roles/                (mass-role)
-│   ├── info/                  (serverinfo, userinfo, help)
-│   ├── ticket/                (ticket-setup)
-│   └── config/                (setwelcome, setautorole, setprotection)
+│   ├── moderation/         (ban, kick, timeout, unban, clear, lock, unlock, slowmode, warn, warnings, unwarn)
+│   ├── music/              (play, skip, stop, pause, resume, nowplaying, queue, volume)
+│   ├── roles/              (massrole)
+│   ├── info/               (serverinfo, userinfo, botinfo, ping, help, rank, leaderboard)
+│   ├── ticket/             (ticket-setup)
+│   ├── config/             (setwelcome, setgoodbye, setautorole, setlogs, setprotection, leveltoggle)
+│   └── fun/                (say, embed)
 ├── events/
 │   ├── ready.js
-│   ├── guildMemberAdd.js     ← الترحيب + الرتبة التلقائية
-│   ├── interactionCreate.js  ← تنفيذ الأوامر + الأزرار
-│   └── messageCreate.js      ← Anti-Spam / Anti-Link
+│   ├── interactionCreate.js  ← الأوامر + الأزرار (تذاكر/موسيقى/رتب جماعية)
+│   ├── messageCreate.js      ← Anti-Spam / Anti-Link + نظام XP
+│   ├── guildMemberAdd.js     ← الترحيب + الرتبة التلقائية + لوق انضمام
+│   ├── guildMemberRemove.js  ← الوداع + لوق مغادرة
+│   ├── messageDelete.js / messageUpdate.js   ← لوقات الرسائل
+│   ├── channelCreate.js / channelDelete.js   ← لوقات القنوات
+│   └── roleCreate.js / roleDelete.js         ← لوقات الرتب
 ├── utils/
-│   ├── settings.js           ← تخزين إعدادات كل سيرفر (JSON)
-│   └── embeds.js              ← قوالب Embeds موحدة
-└── data/
-    └── settings.json          ← يُنشأ تلقائياً عند أول تشغيل
+│   ├── settings.js          ← إعدادات كل سيرفر (JSON)
+│   ├── levels.js            ← نظام المستويات
+│   ├── warnings.js          ← نظام التحذيرات
+│   ├── logger.js            ← تسجيل الأحداث في قنوات اللوقات
+│   ├── musicUI.js           ← عناصر واجهة الموسيقى
+│   └── embeds.js            ← قوالب Embeds موحدة
+└── data/                    ← ملفات البيانات (تُنشأ تلقائياً)
 ```
 
 ---
 
 ## 🚀 خطوات التشغيل الكاملة
 
-### الخطوة 1: إنشاء تطبيق البوت في Discord Developer Portal
+### 1️⃣ إنشاء البوت في Discord Developer Portal
 
 1. اذهب إلى: https://discord.com/developers/applications
-2. اضغط **New Application** وأعطه اسماً.
-3. من القائمة الجانبية اذهب إلى **Bot** → اضغط **Add Bot**.
-4. فعّل الخيارات التالية تحت **Privileged Gateway Intents** (مهم جداً):
+2. **New Application** ثم **Bot** → **Add Bot**.
+3. فعّل **Privileged Gateway Intents**:
    - ✅ `SERVER MEMBERS INTENT`
    - ✅ `MESSAGE CONTENT INTENT`
-5. اضغط **Reset Token** ثم انسخ التوكن (لن يظهر مرة أخرى، احفظه في مكان آمن).
-6. من صفحة **OAuth2 → General** انسخ **Client ID** (Application ID).
+4. **Reset Token** وانسخ التوكن.
+5. من **OAuth2 → General** انسخ **Client ID**.
 
-### الخطوة 2: دعوة البوت إلى سيرفرك
+### 2️⃣ دعوة البوت للسيرفر
 
-1. اذهب إلى **OAuth2 → URL Generator**.
-2. اختر Scopes: `bot` و `applications.commands`.
-3. اختر الصلاحيات (Permissions) التالية على الأقل:
-   `Administrator` (الأسهل)، أو بشكل أدق:
-   `Manage Roles`, `Manage Channels`, `Kick Members`, `Ban Members`,
-   `Moderate Members`, `Manage Messages`, `Send Messages`,
-   `Embed Links`, `Read Message History`, `View Channels`.
-4. انسخ الرابط الناتج بالأسفل وافتحه في المتصفح، ثم اختر سيرفرك وادعُ البوت.
+- **OAuth2 → URL Generator** → Scopes: `bot` + `applications.commands`.
+- صلاحيات: `Administrator` (الأسهل) أو: `Manage Roles`, `Manage Channels`, `Kick Members`, `Ban Members`, `Moderate Members`, `Manage Messages`, `Send Messages`, `Embed Links`, `Read Message History`, `View Channels`.
+- **مهم:** ارفع رتبة البوت **فوق** الرتب التي تريد إدارتها.
 
-> ⚠️ **مهم:** بعد دعوة البوت، اذهب إلى إعدادات السيرفر → الرتب، واسحب **رتبة البوت للأعلى** (فوق أي رتبة تريد إدارتها لاحقاً بالرتب الجماعية أو الرتبة التلقائية).
-
-### الخطوة 3: تجهيز المشروع على جهازك
-
-تأكد أن لديك [Node.js](https://nodejs.org) إصدار 18 أو أحدث مثبت (`node -v` للتأكد).
+### 3️⃣ التثبيت والإعداد
 
 ```bash
-# 1. افتح الطرفية (Terminal) داخل مجلد المشروع discord-bot
 cd discord-bot
-
-# 2. تثبيت الحزم المطلوبة
 npm install
+cp .env.example .env   # ثم عدّل .env وضع بياناتك
 ```
 
-### الخطوة 4: إعداد ملف البيئة (.env)
+> ⚠️ ضع كلمة مرور قوية في `DASHBOARD_PASSWORD` لحماية لوحة التحكم.
 
-1. انسخ ملف `.env.example` وأعد تسميته إلى `.env`
-2. افتحه وضع بياناتك:
-
-```env
-DISCORD_TOKEN=التوكن_الذي_نسخته_في_الخطوة_1
-CLIENT_ID=معرف_التطبيق_الذي_نسخته_في_الخطوة_1
-GUILD_ID=معرف_سيرفرك (اختياري - للتسجيل السريع أثناء التجربة)
-```
-
-> 💡 **كيف أحصل على GUILD_ID؟** فعّل "وضع المطور" في ديسكورد (الإعدادات → متقدم → Developer Mode)، ثم اضغط كليك يمين على أيقونة السيرفر → Copy Server ID.
-
-### الخطوة 5: تسجيل الأوامر (Slash Commands)
+### 4️⃣ تسجيل الأوامر وتشغيل البوت
 
 ```bash
-node deploy-commands.js
+node deploy-commands.js   # تسجيل الأوامر (استخدم GUILD_ID للتسجيل الفوري أثناء التجربة)
+node index.js             # تشغيل البوت
 ```
 
-يجب أن ترى رسالة تفيد بنجاح تسجيل الأوامر. إذا وضعت `GUILD_ID` ستظهر الأوامر فوراً؛ وإلا فقد تستغرق حتى ساعة للظهور عالمياً.
-
-### الخطوة 6: تشغيل البوت
-
-```bash
-node index.js
-```
-
-إذا رأيت `✅ تم تسجيل الدخول بنجاح باسم: ...` فالبوت يعمل الآن بنجاح! 🎉
+لوحة التحكم تفتح على: `http://localhost:3000`
 
 ---
 
-## ⚙️ أوامر الإعداد الأولي داخل السيرفر (بعد التشغيل)
-
-نفّذ هذه الأوامر داخل ديسكورد لإعداد الميزات:
+## ⚙️ أوامر الإعداد داخل السيرفر
 
 | الأمر | الوظيفة |
 |---|---|
-| `/setwelcome القناة:#ترحيب` | تفعيل رسائل الترحيب في قناة معينة |
-| `/setautorole الرتبة:@عضو` | تفعيل الرتبة التلقائية للأعضاء الجدد |
+| `/setwelcome القناة:#ترحيب` | تفعيل رسائل الترحيب |
+| `/setgoodbye القناة:#وداع` | تفعيل رسائل الوداع |
+| `/setautorole الرتبة:@عضو` | الرتبة التلقائية للأعضاء الجدد |
+| `/setlogs mod القناة:#لوقات` | قناة لوقات الإدارة |
+| `/setlogs members القناة:#أعضاء` | قناة لوقات الأعضاء |
 | `/setprotection النظام:Anti-Spam تفعيل:true` | تفعيل الحماية من السبام |
-| `/setprotection النظام:Anti-Link تفعيل:true` | تفعيل الحماية من الروابط |
+| `/leveltoggle تفعيل:true` | تفعيل نظام المستويات (XP) |
 | `/ticket-setup` | إرسال رسالة فتح التذاكر في القناة الحالية |
-| `/help` | عرض كل الأوامر المتاحة |
+| `/help` | عرض كل الأوامر |
 
 ---
 
-## 🔧 أوامر الإدارة والاستخدام اليومي
+## 🎵 أوامر الموسيقى
 
-- `/ban العضو:@شخص السبب:...` — حظر عضو
-- `/kick العضو:@شخص` — طرد عضو
-- `/mute العضو:@شخص المدة:10m` — إسكات مؤقت (m=دقائق, h=ساعات, d=أيام)
-- `/clear العدد:50` — حذف 50 رسالة
-- `/mass-role give الرتبة:@VIP` — إعطاء رتبة لكل الأعضاء (مع تأكيد بزر)
-- `/mass-role remove الرتبة:@VIP` — سحب رتبة من كل الأعضاء
-- `/serverinfo` / `/userinfo` — معلومات السيرفر/العضو
+`/play` (اسم أو رابط) • `/skip` • `/stop` • `/pause` • `/resume` • `/nowplaying` • `/queue` • `/volume`
+
+> يدعم YouTube و Spotify و SoundCloud و Apple Music. كل رسالة تشغيل تحتوي أزرار تحكم تفاعلية.
 
 ---
 
-## 🖥️ تشغيل البوت 24/7 (استضافة مجانية)
+## 🔧 أوامر الإدارة
 
-`node index.js` يوقف البوت عند إغلاق الطرفية. للتشغيل الدائم مجاناً جرّب:
+`/ban` `/kick` `/mute` `/unban` `/clear` `/lock` `/unlock` `/slowmode` `/warn` `/warnings` `/unwarn` `/mass-role give` `/mass-role remove`
 
-- **Railway.app** أو **Render.com** — استضافة مجانية بحدود شهرية، تدعم رفع مشاريع Node.js مباشرة من GitHub.
-- **VPS خاص بك** مع أداة `pm2`:
-  ```bash
-  npm install -g pm2
-  pm2 start index.js --name "my-bot"
-  pm2 save
-  ```
+---
 
-⚠️ لا تنسَ رفع ملف `.env` بأمان (لا ترفعه إلى GitHub علناً — أضف `.env` إلى `.gitignore`).
+## 🖥️ تشغيل 24/7
+
+```bash
+npm install -g pm2
+pm2 start index.js --name "my-bot"
+pm2 save
+```
+
+⚠️ لا ترفع ملف `.env` إلى GitHub — تمت إضافته إلى `.gitignore`.
 
 ---
 
@@ -148,7 +141,8 @@ node index.js
 
 | المشكلة | الحل |
 |---|---|
-| الأوامر لا تظهر في ديسكورد | نفّذ `node deploy-commands.js` مرة أخرى، وتأكد من `CLIENT_ID` الصحيح |
-| خطأ "Missing Permissions" | تأكد أن رتبة البوت أعلى من الرتبة التي تحاول إدارتها |
-| رسالة الترحيب لا تظهر | تأكد من تفعيل `SERVER MEMBERS INTENT` من Developer Portal ونفّذ `/setwelcome` |
-| Anti-Spam/Anti-Link لا يعمل | تأكد من تفعيل `MESSAGE CONTENT INTENT` ونفّذ `/setprotection` |
+| الأوامر لا تظهر | نفّذ `node deploy-commands.js` وتأكد من `CLIENT_ID` |
+| Missing Permissions | رتبة البوت يجب أن تكون أعلى من الرتب المستهدفة |
+| الترحيب لا يعمل | فعّل `SERVER MEMBERS INTENT` ونفّذ `/setwelcome` |
+| الحماية لا تعمل | فعّل `MESSAGE CONTENT INTENT` ونفّذ `/setprotection` |
+| الموسيقى لا تعمل | تأكد من `GuildVoiceStates` وتثبيت `ffmpeg-static` |
