@@ -8,7 +8,7 @@ const path = require('path');
 const express = require('express');
 const { Client, GatewayIntentBits, Partials, Collection, ActivityType } = require('discord.js');
 const { Player } = require('discord-player');
-const { DefaultExtractors } = require('@discord-player/extractor');
+const { YouTubeExtractor } = require('@discord-player/extractor');
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -51,7 +51,7 @@ client.spamTracker = new Collection();
 
 // إعداد محرك الموسيقى
 const player = new Player(client);
-player.extractors.loadMulti(DefaultExtractors);
+player.extractors.register(YouTubeExtractor, {});
 
 // تحميل الأوامر والأحداث
 function loadFiles(dir, collection, isEvent = false) {
