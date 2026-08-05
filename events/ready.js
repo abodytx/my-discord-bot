@@ -11,10 +11,22 @@ module.exports = {
         console.log(`✅ تم تسجيل الدخول بنجاح باسم: ${client.user.tag}`);
         console.log(`📊 البوت يعمل حالياً على ${client.guilds.cache.size} سيرفر`);
 
-        // تعيين حالة نشاط للبوت (تظهر تحت اسمه)
-        client.user.setPresence({
-            activities: [{ name: 'السيرفر | /help', type: ActivityType.Watching }],
-            status: 'online'
-        });
+        // دالة تحديث حالة النشاط ديناميكياً
+        const updatePresence = () => {
+            const serverCount = client.guilds.cache.size;
+            client.user.setPresence({
+                activities: [{ 
+                    name: `${serverCount} سيرفر | /help`, 
+                    type: ActivityType.Watching 
+                }],
+                status: 'online'
+            });
+        };
+
+        // تعيين الحالة فور الإقلاع
+        updatePresence();
+
+        // تحديث الحالة كل 10 دقائق لضمان دقة عدد السيرفرات
+        setInterval(updatePresence, 10 * 60 * 1000);
     }
 };
