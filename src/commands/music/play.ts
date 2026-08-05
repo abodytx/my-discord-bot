@@ -7,7 +7,13 @@ import type { ChatInputCommandInteraction, GuildMember } from 'discord.js';
 import type { SearchResult } from 'discord-player';
 import type { CommandModule, ExtendedClient } from '../../types';
 import { errorEmbed, baseEmbed, infoEmbed } from '../../utils/embeds';
-import { searchMusic, hasYouTubeCookie, YOUTUBE_NEEDS_COOKIE } from '../../utils/musicSearch';
+import {
+    searchMusic,
+    searchSoundCloud,
+    hasYouTubeCookie,
+    isYouTubeUrl,
+    YOUTUBE_NEEDS_COOKIE
+} from '../../utils/musicSearch';
 
 export default {
     data: new SlashCommandBuilder()
@@ -84,7 +90,7 @@ export default {
                 });
             }
 
-            await client.player!.play(voiceChannel, searchResult, {
+            const playOptions = {
                 nodeOptions: {
                     metadata: { channel: interaction.channel, requestedBy: interaction.user },
                     leaveOnEmpty: true,
@@ -92,9 +98,53 @@ export default {
                     leaveOnEnd: false,
                     selfDeaf: true
                 }
-            });
+            };
 
-            if (hasYouTubeCookie()) {
+            let usedFallback = false;
+            try {
+                await client.player!.play(voiceChannel, searchResult, playOptions);
+            } catch (err) {
+                const e = err as Error;
+                const canFallback = hasYouTubeCookie() && !isYouTubeUrl(query);
+                if (canFallback) {
+                    console.warn('فشل بث يوتيوب، تحويل تلقائي إلى SoundCloud:', e.message);
+                    client.player!.queues.get(guild.id)?.delete();
+                    const fallback = (await searchSoundCloud(client.player!, query, {
+                        requestedBy: interaction.user
+                    })) as SearchResult;
+                    if (!fallback.hasTracks()) {
+                        return interaction.followUp({
+                            embeds: [
+                                errorEmbed(
+                                    'لا توجد نتائج على SoundCloud',
+                                    `تعذر تشغيل "${query}" حتى بعد التحويل التلقائي.`
+                                )
+                            ]
+                        });
+                    }
+                    await client.player!.play(voiceChannel, fallback, playOptions);
+                    usedFallback = true;
+                } else {
+                    const hint =
+                        e.message.toLowerCase().includes('sign in') || e.message.includes('login')
+                            ? '\n\n> 💡 **السبب الشائع:** كوكيز يوتيوب منتهية أو محجوبة. حدّث `YOUTUBE_COOKIE` أو استخدم اسم الأغنية وسيتحول لـ SoundCloud تلقائياً.'
+                            : '';
+                    return interaction.followUp({
+                        embeds: [errorEmbed('تعذر التشغيل', `حدث خطأ: ${e.message}${hint}`)]
+                    });
+                }
+            }
+
+            if (usedFallback) {
+                await interaction.followUp({
+                    embeds: [
+                        infoEmbed(
+                            '🎧 تشغيل عبر SoundCloud',
+                            'فشل بث يوتيوب (كوكيز منتهية غالباً)، تم التحويل تلقائياً إلى **SoundCloud**.'
+                        )
+                    ]
+                });
+            } else if (hasYouTubeCookie()) {
                 await interaction.followUp({
                     embeds: [
                         baseEmbed()

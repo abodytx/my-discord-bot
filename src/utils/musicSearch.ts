@@ -20,6 +20,24 @@ type SearchOptions = NonNullable<Parameters<Player['search']>[1]>;
  * يبحث عن مقطع موسيقي مع إعادة التوجيه تلقائياً إلى SoundCloud
  * عند غياب كوكيز يوتيوب.
  */
+export function isYouTubeUrl(query: string): boolean {
+    return YT_URL.test(String(query || '').trim());
+}
+
+/**
+ * يبحث على SoundCloud مباشرة (اسم أغنية أو رابط).
+ */
+export async function searchSoundCloud(player: Player, query: string, options: SearchOptions = {}): Promise<unknown> {
+    const trimmed = String(query || '').trim();
+    if (!trimmed) throw new Error('بحث فارغ');
+
+    const isUrl = /^https?:\/\//i.test(trimmed);
+    return player.search(trimmed, {
+        ...options,
+        searchEngine: isUrl ? undefined : QueryType.SOUNDCLOUD_SEARCH
+    });
+}
+
 export async function searchMusic(player: Player, query: string, options: SearchOptions = {}): Promise<unknown> {
     const trimmed = String(query || '').trim();
     if (!trimmed) throw new Error('بحث فارغ');
@@ -31,18 +49,14 @@ export async function searchMusic(player: Player, query: string, options: Search
 
     // بلا كوكيز:
     // - رابط يوتيوب مباشر لا يمكن تشغيله (يحتاج تسجيل دخول) → نعيد رسالة واضحة
-    if (YT_URL.test(trimmed)) {
+    if (isYouTubeUrl(trimmed)) {
         const err = new Error('youtube_needs_cookie');
         (err as Error & { code: string }).code = YOUTUBE_NEEDS_COOKIE;
         throw err;
     }
 
     // - رابط SoundCloud أو اسم أغنية → نبحث على SoundCloud مباشرة
-    const isUrl = /^https?:\/\//i.test(trimmed);
-    return player.search(trimmed, {
-        ...options,
-        searchEngine: isUrl ? undefined : QueryType.SOUNDCLOUD_SEARCH
-    });
+    return searchSoundCloud(player, trimmed, options);
 }
 
 export { YT_URL };
