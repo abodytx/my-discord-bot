@@ -237,14 +237,27 @@ app.post('/api/settings/welcome', (req, res) => { config.welcome = { enabled: re
 app.post('/api/settings/logs', (req, res) => { config.logs = { enabled: true, channel: req.body.channel }; handlePost(req, res, 'تم الحفظ!'); });
 app.post('/api/bot/say', async (req, res) => { try { const ch = await client.channels.fetch(req.body.channel); if(ch) await ch.send(req.body.message); handlePost(req, res, 'تم الإرسال!'); } catch (e) { res.send('<script>alert("خطأ");</script>'); } });
 app.post('/api/bot/status', (req, res) => { const { type, text } = req.body; const types = { Playing: ActivityType.Playing, Watching: ActivityType.Watching, Listening: ActivityType.Listening }; client.user.setPresence({ activities: [{ name: text, type: types[type] }], status: 'online' }); config.bot.activityText = text; handlePost(req, res, 'تم التحديث!'); });
+// =====================================================
+// مسارات الموسيقى المحدثة
+// =====================================================
 
-// مسارات الموسيقى
 app.post('/api/music/play', async (req, res) => {
     try {
         const vc = client.channels.cache.get(req.body.voiceChannel);
         if (!vc) throw new Error('الروم الصوتي غير موجود!');
         
-        await player.play(vc, req.body.song, {
+        let query = req.body.song;
+        
+        // البحث عن المقطع ودعم الروابط والأسماء بشكل كامل
+        const searchResult = await player.search(query, {
+            requestedBy: client.user
+        });
+
+        if (!searchResult.hasTracks()) {
+            throw new Error('لم يتم العثور على أي نتائج لهذا الرابط أو الاسم!');
+        }
+
+        await player.play(vc, searchResult, {
             nodeOptions: { metadata: { channel: vc } }
         });
         
