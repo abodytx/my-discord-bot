@@ -67,7 +67,11 @@ const player = new Player(client);
 client.player = player;
 
 async function setupExtractors() {
-    await player.extractors.register(YoutubeExtractor);
+    // تسجيل محرك اليوتيوب مع دعم الكوكيز (مطلوب لاستقرار البث)
+    await player.extractors.register(YoutubeExtractor, {
+        cookie: process.env.YOUTUBE_COOKIE || null,
+        disableYTJSLog: true
+    });
     for (const ext of DefaultExtractors) {
         await player.extractors.register(ext);
     }
@@ -98,11 +102,26 @@ player.events.on('emptyChannel', (queue) => {
 
 player.events.on('error', (queue, error) => {
     console.error('🎵 خطأ في مشغل الموسيقى:', error.message);
+    notifyPlaybackError(queue, error);
 });
 
 player.events.on('playerError', (queue, error) => {
     console.error('🎵 خطأ أثناء تشغيل مقطع:', error.message);
+    notifyPlaybackError(queue, error);
 });
+
+// إبلاغ قناة الدردشة بأخطاء التشغيل مع اقتراح الحل
+function notifyPlaybackError(queue, error) {
+    const { channel } = queue?.metadata || {};
+    if (!channel) return;
+    const message = String(error?.message || error || 'خطأ غير معروف');
+    const hint = message.toLowerCase().includes('sign in') || message.includes('login')
+        ? '\n\n> 💡 **سبب شائع:** يوتيوب أصبح يطلب تسجيل دخول للبث. أضف كوكيز يوتيوب عبر متغير `YOUTUBE_COOKIE` في ملف `.env` (انظر README).'
+        : '';
+    channel.send({
+        embeds: [errorEmbed('فشل تشغيل المقطع', `تعذر تشغيل هذا المقطع.\n\`${message}\`${hint}`)]
+    }).catch(() => {});
+}
 
 // =====================================================
 // تحميل الأوامر والأحداث
@@ -573,6 +592,9 @@ app.listen(PORT, () => console.log(`🌐 لوحة التحكم تعمل على: 
 async function boot() {
     try {
         await setupExtractors();
+        if (!process.env.YOUTUBE_COOKIE) {
+            console.warn('⚠️ لم يتم ضبط YOUTUBE_COOKIE: قد يمنع يوتيوب البث مؤخراً. أضف كوكيز يوتيوب في ملف .env لضمان عمل الموسيقى (انظر README).');
+        }
         const token = process.env.DISCORD_TOKEN || process.env.TOKEN;
         if (!token) {
             console.error('❌ لم يتم العثور على توكن البوت! انسخ ملف .env.example إلى .env وضع التوكن فيه.');

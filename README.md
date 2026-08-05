@@ -117,6 +117,22 @@ node index.js             # تشغيل البوت
 
 > يدعم YouTube و Spotify و SoundCloud و Apple Music. كل رسالة تشغيل تحتوي أزرار تحكم تفاعلية.
 
+### ⚠️ مهم: ضبط الكوكيز لتشغيل يوتيوب
+
+يوتيوب أصبح يطلب تسجيل دخول للبث (2026). إذا دخل البوت الروم الصوتي لكن ما شغّل أغاني يوتيوب، الحل إضافة كوكيز:
+
+1. سجّل دخول بحساب يوتيوب احتياطي في متصفحك.
+2. افتح أدوات المطور `F12` → **Application** → **Cookies** → `https://www.youtube.com`.
+3. انسخ قيم الكوكيز `SID`, `HSID`, `SSID` وضعها في `.env`:
+   ```
+   YOUTUBE_COOKIE=SID=...; HSID=...; SSID=...
+   ```
+4. أعد تشغيل البوت.
+
+> المرجع الكامل: https://ytjs.dev/guide/authentication.html#cookies
+>
+> 💡 **بدون كوكيز:** SoundCloud و Apple Music و Vimeo تعمل مباشرة بدون أي إعداد. استخدم `/play` مع كلمات أو روابط SoundCloud كبديل فوري.
+
 ---
 
 ## 🔧 أوامر الإدارة
@@ -145,4 +161,5 @@ pm2 save
 | Missing Permissions | رتبة البوت يجب أن تكون أعلى من الرتب المستهدفة |
 | الترحيب لا يعمل | فعّل `SERVER MEMBERS INTENT` ونفّذ `/setwelcome` |
 | الحماية لا تعمل | فعّل `MESSAGE CONTENT INTENT` ونفّذ `/setprotection` |
-| الموسيقى لا تعمل | تأكد من `GuildVoiceStates` وتثبيت `ffmpeg-static` |
+| الموسيقى لا تعمل | تأكد من `GuildVoiceStates` وتثبيت `ffmpeg-static`، وإذا كان يوتيوب فقط: أضف `YOUTUBE_COOKIE` في `.env` (انظر قسم الموسيقى أعلاه) |
+| البوت يدخل الروم لكن لا يوجد صوت | غالباً يوتيوب يحجب البث بدون تسجيل دخول → أضف `YOUTUBE_COOKIE` أو استخدم SoundCloud |
