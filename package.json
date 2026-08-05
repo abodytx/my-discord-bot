@@ -2,12 +2,21 @@
   "name": "pro-discord-bot",
   "version": "2.0.0",
   "description": "بوت ديسكورد شامل (Moderation + Music + Tickets + Levels + Logs) منافس لـ ProBot - مجاني بالكامل",
-  "main": "index.js",
+  "main": "dist/index.js",
   "type": "commonjs",
   "scripts": {
-    "start": "node index.js",
-    "deploy": "node deploy-commands.js",
-    "dev": "node --watch index.js"
+    "start": "node dist/index.js",
+    "deploy": "node dist/deploy-commands.js",
+    "dev": "tsx watch src/index.ts",
+    "build": "tsc",
+    "typecheck": "tsc --noEmit",
+    "lint": "eslint src --max-warnings 0",
+    "format": "prettier --write src",
+    "format:check": "prettier --check src",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "migrate": "tsx scripts/migrate-json-to-mongo.ts",
+    "prepare": "husky"
   },
   "dependencies": {
     "@discord-player/extractor": "^7.2.0",
@@ -19,6 +28,30 @@
     "dotenv": "^16.4.5",
     "express": "^5.2.1",
     "ffmpeg-static": "^5.3.0",
-    "libsodium-wrappers": "^0.8.4"
+    "libsodium-wrappers": "^0.8.4",
+    "mongoose": "^8.24.2",
+    "node-cache": "^5.1.2"
+  },
+  "devDependencies": {
+    "@types/express": "^5.0.6",
+    "@types/ffmpeg-static": "^3.0.3",
+    "@types/node": "^26.1.2",
+    "@types/ws": "^8.18.1",
+    "eslint": "^9.39.5",
+    "husky": "^9.1.7",
+    "lint-staged": "^17.3.0",
+    "prettier": "^3.9.6",
+    "tsx": "^4.23.8",
+    "typescript": "^5.9.3",
+    "typescript-eslint": "^8.66.0",
+    "vitest": "^4.1.10",
+    "winston": "^3.19.0",
+    "winston-daily-rotate-file": "^5.0.0"
+  },
+  "lint-staged": {
+    "src/**/*.ts": [
+      "eslint --fix",
+      "prettier --write"
+    ]
   }
 }

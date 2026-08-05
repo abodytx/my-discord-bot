@@ -1,7 +1,11 @@
 node_modules/
+dist/
+coverage/
 .env
 .env.local
 config.json
 data/*.json
 npm-debug.log
 *.log
+logs/
+.dashboard-secret

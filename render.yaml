@@ -8,8 +8,8 @@ services:
     name: discord-bot-dashboard
     runtime: node
     plan: free
-    buildCommand: npm install
-    startCommand: node index.js
+    buildCommand: npm install && npm run build
+    startCommand: node dist/index.js
     healthCheckPath: /healthz
     autoDeploy: true
     envVars:

@@ -25,49 +25,30 @@
 
 ```
 discord-bot/
-├── index.js               ← الملف الرئيسي (Modular: البوت + اللوحة + الموسيقى + الحماية)
-├── deploy-commands.js      ← ملف تسجيل الأوامر لدى ديسكورد
-├── package.json
-├── .env.example            ← انسخه وأعد تسميته .env
-├── commands/
-│   ├── moderation/         (ban, kick, timeout, unban, clear, lock, unlock, slowmode, warn, warnings, unwarn)
-│   ├── economy/            (balance, daily, coinflip, slots, ecotop)
-│   ├── music/              (play, skip, stop, pause, resume, nowplaying, queue, volume)
-│   ├── roles/              (massrole)
-│   ├── info/               (serverinfo, userinfo, botinfo, ping, help, rank, leaderboard)
-│   ├── ticket/             (ticket-setup)
-│   ├── config/             (setwelcome, setgoodbye, setautorole, setlogs, setprotection, leveltoggle)
-│   └── fun/                (say, embed)
-├── events/                 ← كلها آمنة عبر CrashGuard
-│   ├── ready.js
-│   ├── interactionCreate.js  ← الأوامر + الأزرار (تذاكر/موسيقى/رتب جماعية)
-│   ├── messageCreate.js      ← Anti-Spam (كتم تلقائي) / Anti-Link + نظام XP
-│   ├── guildMemberAdd.js     ← بطاقة ترحيب Canvas + الرتبة التلقائية + لوق
-│   ├── guildMemberRemove.js  ← الوداع + كشف الطرد الجماعي
-│   ├── guildBanAdd.js        ← لوق + حماية Mass Ban
-│   ├── webhookCreate.js      ← لوق + حماية سبام الويب هوك
-│   ├── messageDelete.js / messageUpdate.js   ← لوقات الرسائل
-│   ├── channelCreate.js / channelDelete.js   ← لوق + كشف Raid + استعادة القنوات
-│   └── roleCreate.js / roleDelete.js         ← لوق + استعادة الرتب
-├── modules/
-│   ├── antiNuke.js          ← محرك الحماية الذكية (نافذة زمنية + استعادة)
-│   ├── economy.js           ← نظام الاقتصاد (data/economy.json)
-│   ├── welcomeCards.js      ← توليد بطاقات الترحيب (Canvas)
-│   ├── liveHub.js           ← بث الأحداث للوحة (SSE)
-│   └── crashGuard.js        ← منع توقف البوت نهائياً
-├── dashboard/
-│   ├── server.js            ← خادم اللوحة (مصادقة + SSE + APIs)
-│   └── public/              ← واجهة SPA (index.html + style.css + app.js)
-├── utils/
-│   ├── settings.js          ← إعدادات كل سيرفر (JSON)
-│   ├── levels.js            ← نظام المستويات
-│   ├── warnings.js          ← نظام التحذيرات
-│   ├── logger.js            ← تسجيل الأحداث في قنوات اللوقات
-│   ├── musicUI.js           ← عناصر واجهة الموسيقى
-│   ├── musicSearch.js       ← فال باك تلقائي لـ SoundCloud
-│   └── embeds.js            ← قوالب Embeds موحدة
-└── data/                    ← ملفات البيانات (تُنشأ تلقائياً)
+├── src/                    ← كود المصدر الكامل (TypeScript)
+│   ├── index.ts            ← نقطة الانطلاق (CrashGuard + تحميل آمن للأوامر/الأحداث)
+│   ├── deploy-commands.ts  ← تسجيل الأوامر لدى ديسكورد
+│   ├── commands/           ← 42 أمراً مقسمة: moderation, economy, music, roles, info, ticket, config, fun
+│   ├── events/             ← 13 حدثاً (محمّلة آمنة عبر CrashGuard)
+│   ├── modules/            ← antiNuke, economy, welcomeCards, liveHub, crashGuard
+│   ├── storage/            ← طبقة تخزين موحدة (MongoDB / JSON + Cache)
+│   │   ├── mongoStore.ts   ← التنفيذ الإنتاجي (Mongoose)
+│   │   ├── jsonStore.ts    ← التنفيذ المتوافق مع البيانات القديمة
+│   │   └── cache.ts        ← طبقة ذاكرة مؤقتة NodeCache
+│   ├── utils/              ← settings, levels, warnings, logger, musicUI, musicSearch, embeds, defaults
+│   ├── dashboard/          ← لوحة التحكم (server.ts) + dashboard/public (SPA)
+│   └── types/              ← الأنواع الموحدة
+├── tests/                  ← اختبارات Vitest (منطق المستويات/الموسيقى/الإعدادات)
+├── scripts/
+│   └── migrate-json-to-mongo.ts ← ترحيل بيانات JSON القديمة إلى MongoDB
+├── dashboard/public/       ← واجهة SPA (index.html + style.css + app.js)
+├── data/                   ← ملفات JSON للتوافق (تُنشأ تلقائياً)
+├── tsconfig.json
+├── eslint.config.mjs
+└── vitest.config.mts
 ```
+
+> ملاحظة: المشروع كامل بـ **TypeScript** ويُبنى إلى `dist/`. ملفات `.js` القديمة أُزيلت.
 
 ---
 
@@ -98,15 +79,30 @@ cp .env.example .env   # ثم عدّل .env وضع بياناتك
 ```
 
 > ⚠️ ضع كلمة مرور قوية في `DASHBOARD_PASSWORD` لحماية لوحة التحكم.
+>
+> 💾 **التخزين:** اترك `DB_URI` فارغاً لاستخدام JSON (للتوافق)، أو اضبط `DB_URI=mongodb://...` لاستخدام **MongoDB** الإنتاجي. لترحيل بياناتك القديمة من JSON إلى MongoDB: `npm run migrate`.
 
-### 4️⃣ تسجيل الأوامر وتشغيل البوت
+### 4️⃣ البناء وتسجيل الأوامر وتشغيل البوت
 
 ```bash
-node deploy-commands.js   # تسجيل الأوامر (استخدم GUILD_ID للتسجيل الفوري أثناء التجربة)
-node index.js             # تشغيل البوت
+npm run build            # ترجمة TypeScript إلى dist/
+npm run deploy           # تسجيل الأوامر (استخدم GUILD_ID للتسجيل الفوري أثناء التجربة)
+npm start                # تشغيل البوت (يعمل من dist/)
 ```
 
+أثناء التطوير استخدم: `npm run dev` (تشغيل مباشر مع إعادة تحميل تلقائي).
+
 لوحة التحكم تفتح على: `http://localhost:3000`
+
+### 🧪 الاختبارات والجودة
+
+```bash
+npm run typecheck        # فحص الأنواع (tsc --noEmit)
+npm run lint             # فحص الكود (ESLint)
+npm test                 # تشغيل اختبارات Vitest
+```
+
+> يتم تشغيل `lint-staged` + الاختبارات تلقائياً عند كل commit عبر **Husky**.
 
 ---
 
@@ -165,7 +161,7 @@ node index.js             # تشغيل البوت
 
 ```bash
 npm install -g pm2
-pm2 start index.js --name "my-bot"
+pm2 start dist/index.js --name "my-bot"
 pm2 save
 ```
 
