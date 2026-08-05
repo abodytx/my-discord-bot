@@ -38,14 +38,19 @@ module.exports = {
             return;
         }
 
-        // ============ 2) أزرار نظام التذاكر ============
+        // ============ 2) أزرار نظام التذاكر والأوامر ============
         if (interaction.isButton()) {
             const { customId } = interaction;
 
             // ---- فتح تذكرة جديدة ----
             if (customId === 'ticket_open') {
                 await interaction.deferReply({ ephemeral: true });
-                const settings = getGuildSettings(interaction.guild.id);
+                let settings = {};
+                try {
+                    settings = getGuildSettings(interaction.guild.id) || {};
+                } catch (e) {
+                    console.warn('تعذر قراءة إعدادات التذاكر، يتم الاستمرار بالإعدادات الافتراضية.');
+                }
 
                 // منع فتح أكثر من تذكرة واحدة لنفس العضو
                 const existing = interaction.guild.channels.cache.find(
@@ -77,7 +82,7 @@ module.exports = {
                 });
 
                 const ticketEmbed = new EmbedBuilder()
-                    .setColor(COLORS.PRIMARY)
+                    .setColor(COLORS?.PRIMARY || '#0284c7')
                     .setTitle('🎫 تذكرة دعم جديدة')
                     .setDescription(`مرحباً ${interaction.user}!\nيرجى وصف مشكلتك أو استفسارك بالتفصيل، وسيقوم فريق الإدارة بالرد عليك قريباً.`)
                     .setTimestamp();
@@ -104,10 +109,14 @@ module.exports = {
                 return;
             }
 
-            // ---- تأكيد عملية الرتب الجماعية ----
-            if (customId.startsWith('massrole_confirm_') || customId.startsWith('massrole_cancel_')) {
-                const [, action, opType, roleId, requesterId] = customId.split('_');
-                // الشكل: massrole_confirm_give_ROLEID_REQUESTERID  أو  massrole_cancel_...
+            // ---- تأكيد عملية الرتب الجماعية (Mass Role) ----
+            if (customId.startsWith('massrole_')) {
+                // تقسيم المعرف بشكل صحيح (massrole_confirm_give_ROLEID_USERID)
+                const parts = customId.split('_');
+                const action = parts[1];      // confirm أو cancel
+                const opType = parts[2];      // give أو remove
+                const roleId = parts[3];
+                const requesterId = parts[4];
 
                 if (interaction.user.id !== requesterId) {
                     return interaction.reply({
@@ -140,7 +149,7 @@ module.exports = {
                             await member.roles.remove(role);
                             success++;
                         }
-                        // تأخير بسيط بين كل عملية لتجنب حظر Rate Limit من ديسكورد
+                        // تأخير بسيط لتجنب حظر Rate Limit من ديسكورد
                         await new Promise(res => setTimeout(res, 300));
                     } catch (err) {
                         failed++;
@@ -160,9 +169,9 @@ module.exports = {
 };
 
 function infoClosing() {
-    return new EmbedBuilder().setColor(COLORS.WARNING).setDescription('🔒 سيتم إغلاق هذه التذكرة خلال 5 ثوانٍ...');
+    return new EmbedBuilder().setColor(COLORS?.WARNING || '#f59e0b').setDescription('🔒 سيتم إغلاق هذه التذكرة خلال 5 ثوانٍ...');
 }
 
 function infoEmbedSimple(title, desc) {
-    return new EmbedBuilder().setColor(COLORS.INFO).setTitle(title).setDescription(desc);
+    return new EmbedBuilder().setColor(COLORS?.INFO || '#3b82f6').setTitle(title).setDescription(desc);
 }

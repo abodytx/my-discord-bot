@@ -9,8 +9,7 @@ const { getGuildSettings } = require('../utils/settings');
 const { errorEmbed } = require('../utils/embeds');
 
 const SPAM_LIMIT = 5;        // عدد الرسائل المسموح بها
-const SPAM_INTERVAL = 7000;  // خلال هذه المدة (بالمللي ثانية) = 7 ثوانٍ
-const LINK_REGEX = /(https?:\/\/[^\s]+|discord\.gg\/[^\s]+|www\.[^\s]+)/gi;
+const SPAM_INTERVAL = 7000;  // المدة الزمنية (7 ثوانٍ)
 
 module.exports = {
     name: 'messageCreate',
@@ -18,13 +17,21 @@ module.exports = {
         // تجاهل رسائل البوتات ورسائل الخاص
         if (message.author.bot || !message.guild) return;
 
-        // تجاهل المشرفين (لديهم صلاحية إدارة الرسائل) من أنظمة الحماية
+        // تجاهل المشرفين من أنظمة الحماية
         if (message.member?.permissions.has(PermissionFlagsBits.ManageMessages)) return;
 
-        const settings = getGuildSettings(message.guild.id);
+        let settings = {};
+        try {
+            settings = getGuildSettings(message.guild.id) || {};
+        } catch (e) {
+            settings = {};
+        }
 
         // ------------------ Anti-Link ------------------
-        if (settings.antiLink && LINK_REGEX.test(message.content)) {
+        // إنشاء regex محلي تجنباً لمشكلة lastIndex مع الفلاج g
+        const linkRegex = /(https?:\/\/[^\s]+|discord\.gg\/[^\s]+|www\.[^\s]+)/i;
+
+        if (settings.antiLink && linkRegex.test(message.content)) {
             try {
                 await message.delete();
                 const warn = await message.channel.send({
@@ -35,11 +42,11 @@ module.exports = {
             } catch (err) {
                 console.error('خطأ في نظام Anti-Link:', err);
             }
-            return; // لا داعي لفحص السبام إذا تم حذف الرسالة أصلاً
+            return;
         }
 
         // ------------------ Anti-Spam ------------------
-        if (settings.antiSpam) {
+        if (settings.antiSpam && client.spamTracker) {
             const key = `${message.guild.id}-${message.author.id}`;
             const now = Date.now();
             const record = client.spamTracker.get(key) || { count: 0, firstMessageAt: now };
