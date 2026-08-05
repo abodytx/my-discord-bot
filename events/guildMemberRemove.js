@@ -2,15 +2,34 @@
 // حدث "guildMemberRemove": رسالة وداع + لوق مغادرة
 // =====================================================
 
-const { EmbedBuilder } = require('discord.js');
+const { EmbedBuilder, AuditLogEvent } = require('discord.js');
 const { getGuildSettings } = require('../utils/settings');
 const { COLORS } = require('../utils/embeds');
-const { memberLog } = require('../utils/logger');
+const { memberLog, modLog } = require('../utils/logger');
+const { emit } = require('../modules/liveHub');
 
 module.exports = {
     name: 'guildMemberRemove',
     async execute(member, client) {
         const settings = getGuildSettings(member.guild.id) || {};
+
+        emit('log', { level: 'info', source: 'members', message: `غادر عضو: ${member.user?.tag || member.id}` });
+
+        // ------------------ 0) حماية Mass Kick ------------------
+        if (client.antiNuke?.isEnabled(member.guild.id)) {
+            try {
+                const executorId = await client.antiNuke.findExecutor(member.guild, AuditLogEvent.MemberKick, member.id);
+                if (executorId) {
+                    const executor = await member.guild.members.fetch(executorId).catch(() => null);
+                    if (executor && !client.antiNuke.isWhitelisted(member.guild, executor)) {
+                        const result = client.antiNuke.record(member.guild.id, executorId);
+                        if (result.tripped) {
+                            await client.antiNuke.punish(member.guild, executor, 'طرد جماعي (Mass Kick)');
+                        }
+                    }
+                }
+            } catch { /* audit log may be unavailable */ }
+        }
 
         // ------------------ 1) رسالة الوداع ------------------
         if (settings.goodbyeChannelId) {

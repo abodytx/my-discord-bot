@@ -26,6 +26,7 @@ const DEFAULT_SETTINGS = {
     whitelistedUsers: [],
     ticketCategoryId: null,
     ticketLogChannelId: null,
+    staffRoleId: null,
     modLogChannelId: null,
     memberLogChannelId: null,
     levelSystem: false,

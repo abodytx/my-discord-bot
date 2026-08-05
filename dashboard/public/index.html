@@ -1,0 +1,314 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>لوحة تحكم البوت — Enterprise</title>
+  <link rel="stylesheet" href="style.css">
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+</head>
+<body>
+  <div class="app">
+    <!-- ============ Sidebar ============ -->
+    <aside class="sidebar">
+      <div class="logo">
+        <img id="botAvatar" src="" alt="bot">
+        <div>
+          <h2 id="botName">البوت</h2>
+          <span>● متصل</span>
+        </div>
+      </div>
+      <nav id="nav">
+        <div class="nav-item active" data-tab="dashboard"><span class="ico"><i class="fa-solid fa-chart-line"></i></span><span>لوحة الإحصائيات</span></div>
+        <div class="nav-item" data-tab="console"><span class="ico"><i class="fa-solid fa-terminal"></i></span><span>الكونسول الحي</span></div>
+        <div class="nav-item" data-tab="moderation"><span class="ico"><i class="fa-solid fa-gavel"></i></span><span>الإدارة والرصد</span></div>
+        <div class="nav-item" data-tab="protection"><span class="ico"><i class="fa-solid fa-shield-halved"></i></span><span>الحماية Anti-Nuke</span></div>
+        <div class="nav-item" data-tab="welcome"><span class="ico"><i class="fa-solid fa-handshake"></i></span><span>الترحيب والبطاقات</span></div>
+        <div class="nav-item" data-tab="economy"><span class="ico"><i class="fa-solid fa-coins"></i></span><span>الاقتصاد</span></div>
+        <div class="nav-item" data-tab="tickets"><span class="ico"><i class="fa-solid fa-ticket"></i></span><span>الدعم الفني</span></div>
+        <div class="nav-item" data-tab="music"><span class="ico"><i class="fa-solid fa-music"></i></span><span>المشغل</span></div>
+        <div class="nav-item" data-tab="settings"><span class="ico"><i class="fa-solid fa-gear"></i></span><span>الإعدادات</span></div>
+      </nav>
+      <div class="sidebar-footer">
+        <a href="/logout"><i class="fa-solid fa-power-off"></i> تسجيل الخروج</a>
+      </div>
+    </aside>
+
+    <!-- ============ Main ============ -->
+    <main class="main">
+      <header class="topbar">
+        <h1 id="pageTitle">لوحة الإحصائيات</h1>
+        <select id="guildSelect" class="guild-select"><option value="">... تحميل السيرفرات ...</option></select>
+      </header>
+
+      <!-- ===== Dashboard ===== -->
+      <section id="tab-dashboard" class="tab active">
+        <div class="grid grid-4" style="margin-bottom:18px">
+          <div class="stat-card"><div class="label">السيرفرات</div><div class="value" id="mServers">—</div><div class="sub">Guilds</div></div>
+          <div class="stat-card"><div class="label">الأعضاء</div><div class="value" id="mMembers">—</div><div class="sub">Members</div></div>
+          <div class="stat-card"><div class="label">البنق</div><div class="value" id="mPing">—</div><div class="sub">ms</div></div>
+          <div class="stat-card"><div class="label">الرام المستخدم</div><div class="value" id="mMem">—</div><div class="sub">System RAM</div></div>
+        </div>
+        <div class="grid grid-2">
+          <div class="panel">
+            <h3><i class="fa-solid fa-microchip"></i> المعالج / الذاكرة (لحظي)</h3>
+            <div class="chart-box"><canvas id="cpuChart"></canvas></div>
+          </div>
+          <div class="panel">
+            <h3><i class="fa-solid fa-heartbeat"></i> صحة البوت</h3>
+            <div class="row" style="gap:18px">
+              <div style="flex:1">
+                <div id="healthList" style="line-height:2.1;font-size:14px"></div>
+              </div>
+              <div style="width:150px">
+                <canvas id="memDonut"></canvas>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- ===== Live Console ===== -->
+      <section id="tab-console" class="tab">
+        <div class="panel">
+          <div class="term-header">
+            <h3 style="margin:0"><i class="fa-solid fa-terminal"></i> Live Console — أحداث السيرفر</h3>
+            <div>
+              <span class="term-dot" style="background:#ff2e2e"></span>
+              <span class="term-dot" style="background:#ffb020"></span>
+              <span class="term-dot" style="background:#22e584"></span>
+            </div>
+          </div>
+          <div class="terminal" id="terminal">
+            <div class="line"><span class="time">[--:--:--]</span> <span class="src">boot</span> <span class="info">مرحباً بك في الكونسول الحي...</span></div>
+          </div>
+        </div>
+      </section>
+
+      <!-- ===== Moderation ===== -->
+      <section id="tab-moderation" class="tab">
+        <div class="panel">
+          <h3><i class="fa-solid fa-users"></i> أعضاء السيرفر (رصد وإدارة)</h3>
+          <div class="row" style="margin-bottom:12px">
+            <input id="modSearch" type="text" placeholder="ابحث بالاسم أو المعرف..." style="max-width:320px;margin:0">
+            <button class="btn btn-sm btn-ghost" onclick="window.loadMembers()"><i class="fa-solid fa-rotate"></i> تحديث</button>
+          </div>
+          <div class="table-wrap">
+            <table>
+              <thead><tr><th>العضو</th><th>النيك نيم</th><th>الرتب</th><th>انضم</th><th>إجراءات</th></tr></thead>
+              <tbody id="membersBody"><tr><td colspan="5"><div class="spinner"></div></td></tr></tbody>
+            </table>
+          </div>
+        </div>
+      </section>
+
+      <!-- ===== Protection ===== -->
+      <section id="tab-protection" class="tab">
+        <div class="grid grid-2">
+          <div class="panel">
+            <h3><i class="fa-solid fa-shield-halved"></i> إعدادات الحماية</h3>
+            <div class="toggle-wrap">
+              <div>
+                <div style="font-weight:700">Anti-Nuke</div>
+                <div class="hint" style="margin:0">حظر تلقائي لمن يحذف القنوات/الرتب أو يقوم بالحظر الجماعي</div>
+              </div>
+              <label class="toggle"><input type="checkbox" id="pgAntiNuke"><span class="slider"></span></label>
+            </div>
+            <div class="toggle-wrap">
+              <div>
+                <div style="font-weight:700">Anti-Spam</div>
+                <div class="hint" style="margin:0">كتم المخالفين الذين يرسلون رسائل متكررة</div>
+              </div>
+              <label class="toggle"><input type="checkbox" id="pgAntiSpam"><span class="slider"></span></label>
+            </div>
+            <div class="toggle-wrap" style="margin-bottom:14px">
+              <div>
+                <div style="font-weight:700">Anti-Link</div>
+                <div class="hint" style="margin:0">حذف رسائل الروابط العشوائية</div>
+              </div>
+              <label class="toggle"><input type="checkbox" id="pgAntiLink"><span class="slider"></span></label>
+            </div>
+            <label>الحد الأقصى للأعمال قبل الحظر (خلال 6 ثوانٍ)</label>
+            <input type="number" id="pgMaxActions" min="2" max="20" value="3">
+            <button class="btn btn-block" onclick="saveProtection()"><i class="fa-solid fa-floppy-disk"></i> حفظ إعدادات الحماية</button>
+          </div>
+          <div class="panel">
+            <h3><i class="fa-solid fa-user-shield"></i> القائمة البيضاء (معفون من الحماية)</h3>
+            <div class="row" style="margin-bottom:10px">
+              <select id="wlType" style="max-width:140px;margin:0">
+                <option value="user">عضو</option>
+                <option value="role">رتبة</option>
+              </select>
+              <input id="wlId" type="text" placeholder="المعرف أو الرتبة..." style="flex:1;margin:0">
+              <button class="btn btn-sm btn-green" onclick="addWhitelist()">إضافة</button>
+            </div>
+            <div id="whitelistBox" class="hint">لا توجد عناصر في القائمة البيضاء.</div>
+          </div>
+        </div>
+      </section>
+
+      <!-- ===== Welcome ===== -->
+      <section id="tab-welcome" class="tab">
+        <div class="grid grid-2">
+          <div class="panel">
+            <h3><i class="fa-solid fa-handshake"></i> إعدادات الترحيب والوداع</h3>
+            <label>قناة الترحيب</label>
+            <select id="welcomeChannel"></select>
+            <label>قناة الوداع</label>
+            <select id="goodbyeChannel"></select>
+            <label>قناة القوانين</label>
+            <select id="rulesChannel"></select>
+            <label>نص الترحيب</label>
+            <textarea id="welcomeMessage" placeholder="استخدم {user} {server} {memberCount}"></textarea>
+            <label>نص الوداع</label>
+            <textarea id="goodbyeMessage" placeholder="استخدم {user} {server} {memberCount}"></textarea>
+            <div class="toggle-wrap">
+              <div><div style="font-weight:700">تفعيل رسائل الترحيب</div></div>
+              <label class="toggle"><input type="checkbox" id="welcomeEnabled"><span class="slider"></span></label>
+            </div>
+            <button class="btn btn-block" onclick="saveWelcome()"><i class="fa-solid fa-floppy-disk"></i> حفظ</button>
+          </div>
+          <div class="panel">
+            <h3><i class="fa-solid fa-image"></i> بطاقة الترحيب (Canvas)</h3>
+            <p class="hint">ارفع خلفية مخصصة لبطاقة الترحيب (PNG/JPG). عند الانضمام تُرسل بطاقة رسمية فيها صورة العضو واسمه.</p>
+            <label>اختر صورة الخلفية</label>
+            <input type="file" id="bgFile" accept="image/*">
+            <div class="row">
+              <button class="btn" onclick="uploadBackground()"><i class="fa-solid fa-upload"></i> رفع الخلفية</button>
+              <button class="btn btn-red btn-ghost" onclick="resetBackground()"><i class="fa-solid fa-rotate-left"></i> إزالة المخصصة</button>
+            </div>
+            <div id="bgStatus" class="hint" style="margin-top:12px"></div>
+            <hr style="border-color:var(--border);margin:18px 0">
+            <h3><i class="fa-solid fa-award"></i> الرتبة التلقائية</h3>
+            <select id="autoRole"></select>
+            <button class="btn btn-block btn-magenta" onclick="saveAutoRole()">حفظ الرتبة التلقائية</button>
+          </div>
+        </div>
+      </section>
+
+      <!-- ===== Economy ===== -->
+      <section id="tab-economy" class="tab">
+        <div class="panel">
+          <h3><i class="fa-solid fa-coins"></i> نظام الاقتصاد — تعديل أرصدة الأعضاء</h3>
+          <div class="row" style="margin-bottom:14px">
+            <input id="ecoSearch" type="text" placeholder="بحث..." style="max-width:300px;margin:0">
+            <button class="btn btn-sm btn-ghost" onclick="loadEconomy()"><i class="fa-solid fa-rotate"></i> تحديث</button>
+          </div>
+          <div class="table-wrap">
+            <table>
+              <thead><tr><th>الرتبة</th><th>العضو</th><th>الرصيد</th><th>الألعاب (فوز/خسارة)</th><th>تعديل الرصيد</th></tr></thead>
+              <tbody id="economyBody"><tr><td colspan="5"><div class="spinner"></div></td></tr></tbody>
+            </table>
+          </div>
+        </div>
+      </section>
+
+      <!-- ===== Tickets ===== -->
+      <section id="tab-tickets" class="tab">
+        <div class="grid grid-2">
+          <div class="panel">
+            <h3><i class="fa-solid fa-screwdriver-wrench"></i> إعداد نظام التذاكر</h3>
+            <label>الفئة (Category) لإنشاء التذاكر فيها</label>
+            <select id="ticketCategory"></select>
+            <label>قناة لوقات التذاكر</label>
+            <select id="ticketLog"></select>
+            <label>رتبة فريق الدعم</label>
+            <select id="ticketStaff"></select>
+            <button class="btn btn-block" onclick="saveTickets()"><i class="fa-solid fa-floppy-disk"></i> حفظ الإعدادات</button>
+          </div>
+          <div class="panel">
+            <h3><i class="fa-solid fa-ticket"></i> فتح / إغلاق تذاكر</h3>
+            <label>المعرف الرقمي للعضو (من تبويب الإدارة)</label>
+            <input id="ticketUserId" type="text" placeholder="User ID">
+            <button class="btn btn-block btn-magenta" onclick="openTicket()"><i class="fa-solid fa-plus"></i> فتح تذكرة</button>
+            <hr style="border-color:var(--border);margin:18px 0">
+            <label>المعرف الرقمي لقناة التذكرة</label>
+            <input id="ticketChannelId" type="text" placeholder="Channel ID">
+            <button class="btn btn-block btn-red" onclick="closeTicket()"><i class="fa-solid fa-lock"></i> إغلاق التذكرة</button>
+          </div>
+        </div>
+      </section>
+
+      <!-- ===== Music ===== -->
+      <section id="tab-music" class="tab">
+        <div class="panel">
+          <h3><i class="fa-solid fa-music"></i> مشغل الموسيقى المركزي</h3>
+          <div class="grid grid-2">
+            <div>
+              <label>الروم الصوتي</label>
+              <select id="musicVoice"></select>
+              <label>قناة الرسائل</label>
+              <select id="musicText"></select>
+              <label>اسم الأغنية أو الرابط</label>
+              <input id="musicSong" type="text" placeholder="ابحث أو ضع رابطاً...">
+              <button class="btn btn-block" onclick="playMusic()"><i class="fa-solid fa-play"></i> تشغيل</button>
+            </div>
+            <div>
+              <label>أدوات التحكم</label>
+              <div class="row">
+                <button class="btn btn-sm" onclick="musicAction('skip')"><i class="fa-solid fa-forward"></i> تخطي</button>
+                <button class="btn btn-sm" onclick="musicAction('pause')"><i class="fa-solid fa-pause"></i> إيقاف</button>
+                <button class="btn btn-sm btn-green" onclick="musicAction('resume')"><i class="fa-solid fa-play"></i> استئناف</button>
+                <button class="btn btn-sm btn-red" onclick="musicAction('stop')"><i class="fa-solid fa-stop"></i> إيقاف نهائي</button>
+              </div>
+              <label style="margin-top:16px">مستوى الصوت</label>
+              <div class="row">
+                <input id="musicVolume" type="number" min="1" max="100" value="50" style="max-width:120px;margin:0">
+                <button class="btn btn-sm btn-magenta" onclick="musicAction('volume')">تطبيق</button>
+              </div>
+              <p class="hint">ملاحظة: بدون كوكيز يوتيوب (YOUTUBE_COOKIE) سيعمل البحث عبر SoundCloud تلقائياً.</p>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- ===== Settings ===== -->
+      <section id="tab-settings" class="tab">
+        <div class="grid grid-2">
+          <div class="panel">
+            <h3><i class="fa-solid fa-book"></i> قنوات اللوقات</h3>
+            <label>لوقات الإدارة (Mod Log)</label>
+            <select id="modLogChannel"></select>
+            <label>لوقات الأعضاء (Member Log)</label>
+            <select id="memberLogChannel"></select>
+            <button class="btn btn-block" onclick="saveLogs()"><i class="fa-solid fa-floppy-disk"></i> حفظ</button>
+          </div>
+          <div class="panel">
+            <h3><i class="fa-solid fa-bullhorn"></i> حالة البوت ورسائله</h3>
+            <label>نص الحالة</label>
+            <input id="statusText" type="text" placeholder="حالة البوت...">
+            <label>نوع الحالة</label>
+            <select id="statusType">
+              <option value="Playing">يلعب</option>
+              <option value="Watching">يشاهد</option>
+              <option value="Listening">يستمع</option>
+              <option value="Competing">يتنافس</option>
+              <option value="Custom">مخصص</option>
+            </select>
+            <button class="btn btn-block btn-magenta" onclick="saveStatus()"><i class="fa-solid fa-check"></i> تحديث الحالة</button>
+            <hr style="border-color:var(--border);margin:18px 0">
+            <label>إرسال رسالة إلى قناة</label>
+            <select id="sayChannel"></select>
+            <textarea id="sayMessage" placeholder="نص الرسالة..."></textarea>
+            <button class="btn btn-block" onclick="sayMessage()"><i class="fa-solid fa-paper-plane"></i> إرسال</button>
+          </div>
+          <div class="panel">
+            <h3><i class="fa-solid fa-chart-simple"></i> نظام المستويات</h3>
+            <div class="toggle-wrap">
+              <div><div style="font-weight:700">تفعيل نظام المستويات</div></div>
+              <label class="toggle"><input type="checkbox" id="levelEnabled"><span class="slider"></span></label>
+            </div>
+            <label>قناة رسائل الترقي</label>
+            <select id="levelChannel"></select>
+            <button class="btn btn-block btn-green" onclick="saveLevels()"><i class="fa-solid fa-floppy-disk"></i> حفظ</button>
+          </div>
+        </div>
+      </section>
+    </main>
+  </div>
+
+  <div class="toast" id="toast"></div>
+  <script src="app.js"></script>
+</body>
+</html>

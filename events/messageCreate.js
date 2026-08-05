@@ -88,6 +88,16 @@ module.exports = {
                             embeds: [errorEmbed('تم رصد سبام', 'يرجى التوقف عن إرسال الرسائل بشكل متكرر وسريع.')]
                         });
                         setTimeout(() => warn.delete().catch(() => {}), 5000);
+
+                        // كتم تلقائي عند تكرار المخالفة
+                        if (record.count >= SPAM_LIMIT + 4 && message.member && !message.member.permissions.has(PermissionFlagsBits.Administrator)) {
+                            const offenses = Math.floor(record.count / SPAM_LIMIT);
+                            const timeoutMinutes = Math.min(60, offenses * 10);
+                            await message.member.timeout(timeoutMinutes * 60 * 1000, 'Anti-Spam: إرسال رسائل متكررة')
+                                .then(() => message.channel.send({
+                                    embeds: [errorEmbed('🔇 تم كتم العضو', `${message.author} تم كتمه **${timeoutMinutes} دقيقة** بسبب السبام المستمر.`)]
+                                })).catch(() => {});
+                        }
                     } catch (err) {
                         console.error('خطأ في نظام Anti-Spam:', err);
                     }

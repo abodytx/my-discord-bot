@@ -1,6 +1,6 @@
 # 🤖 بوت ديسكورد شامل (منافس ProBot) — مجاني 100%
 
-بوت متكامل مبني بـ **Discord.js v14** + **discord-player v7** يشمل: الإدارة والحماية (Anti-Spam/Anti-Link)، الترحيب والوداع الاحترافي، الرتبة التلقائية، الرتب الجماعية، نظام التذاكر، نظام المستويات (XP)، اللوقات الكاملة، مشغل موسيقى احترافي (YouTube / Spotify / SoundCloud...)، ولوحة تحكم ويب كاملة — كل ذلك عبر Slash Commands و Embeds احترافية.
+بوت متكامل مبني بـ **Discord.js v14** + **discord-player v7** يشمل: الإدارة والحماية (Anti-Spam/Anti-Link/Anti-Nuke)، الترحيب التفاعلي ببطاقات Canvas، الرتبة التلقائية، الرتب الجماعية، نظام التذاكر، نظام المستويات (XP)، نظام الاقتصاد والألعاب المصغرة، اللوقات الكاملة، مشغل موسيقى احترافي (YouTube / Spotify / SoundCloud...)، ولوحة تحكم سحابية **Enterprise** بمظهر Cyberpunk/Glassmorphism مع كونسول حي ورسوم لحظية — كل ذلك عبر Slash Commands و Embeds احترافية.
 
 ---
 
@@ -9,13 +9,15 @@
 | النظام | الوصف |
 |---|---|
 | 🛡️ الإدارة | ban, kick, mute/timeout, unban, clear, lock, unlock, slowmode, warn, warnings, unwarn |
-| 🎵 الموسيقى | play, skip, stop, pause, resume, nowplaying, queue, volume + أزرار تحكم تفاعلية |
-| 🎫 التذاكر | فتح/إغلاق/استلام التذاكر تلقائياً داخل فئة مخصصة |
+| 🚨 الحماية الذكية | **Anti-Nuke** (حظر/استعادة تلقائية عند حذف القنوات/الرتب أو الحظر الجماعي) + Anti-Spam (كتم تلقائي) + Anti-Link |
+| 🎵 الموسيقى | play, skip, stop, pause, resume, nowplaying, queue, volume + أزرار تحكم تفاعلية + فال باك تلقائي لـ SoundCloud |
+| 🎫 التذاكر | فتح/إغلاق/استلام التذاكر + إدارة كاملة من لوحة التحكم |
+| 🪙 الاقتصاد | /daily /balance /coinflip /slots /ecotop + تعديل الأرصدة من اللوحة |
 | 📈 المستويات | نظام XP تلقائي + rank + leaderboard + رسائل ترقي |
-| 📝 اللوقات | حذف/تعديل الرسائل، إنشاء/حذف القنوات والرتب، انضمام/مغادرة الأعضاء |
-| 👋 الترحيب | ترحيب + وداع مخصصان برسائل قابلة للتخصيص + رتبة تلقائية |
-| 🛡️ الحماية | Anti-Spam و Anti-Link قابلان للتفعيل لكل سيرفر |
-| 🌐 لوحة تحكم | Web Dashboard محمية بكلمة مرور للتحكم الكامل بالبوت |
+| 👋 الترحيب | بطاقات **Canvas** بخلفيات مخصصة (رفع من اللوحة) + ترحيب ووداع مخصصان + رتبة تلقائية |
+| 📝 اللوقات | حذف/تعديل الرسائل، إنشاء/حذف القنوات والرتب، انضمام/مغادرة، حظر، ويب هوك |
+| 🌐 لوحة تحكم | SPA بمظهر Cyberpunk + **Live Console** (SSE) + رسوم لحظية (CPU/RAM/Ping) + مصادقة |
+| 🛡️ Crash Guard | منع توقف البوت نهائياً عند أي خطأ
 
 ---
 
@@ -23,33 +25,46 @@
 
 ```
 discord-bot/
-├── index.js               ← الملف الرئيسي (البوت + لوحة التحكم + الموسيقى)
+├── index.js               ← الملف الرئيسي (Modular: البوت + اللوحة + الموسيقى + الحماية)
 ├── deploy-commands.js      ← ملف تسجيل الأوامر لدى ديسكورد
 ├── package.json
 ├── .env.example            ← انسخه وأعد تسميته .env
 ├── commands/
 │   ├── moderation/         (ban, kick, timeout, unban, clear, lock, unlock, slowmode, warn, warnings, unwarn)
+│   ├── economy/            (balance, daily, coinflip, slots, ecotop)
 │   ├── music/              (play, skip, stop, pause, resume, nowplaying, queue, volume)
 │   ├── roles/              (massrole)
 │   ├── info/               (serverinfo, userinfo, botinfo, ping, help, rank, leaderboard)
 │   ├── ticket/             (ticket-setup)
 │   ├── config/             (setwelcome, setgoodbye, setautorole, setlogs, setprotection, leveltoggle)
 │   └── fun/                (say, embed)
-├── events/
+├── events/                 ← كلها آمنة عبر CrashGuard
 │   ├── ready.js
 │   ├── interactionCreate.js  ← الأوامر + الأزرار (تذاكر/موسيقى/رتب جماعية)
-│   ├── messageCreate.js      ← Anti-Spam / Anti-Link + نظام XP
-│   ├── guildMemberAdd.js     ← الترحيب + الرتبة التلقائية + لوق انضمام
-│   ├── guildMemberRemove.js  ← الوداع + لوق مغادرة
+│   ├── messageCreate.js      ← Anti-Spam (كتم تلقائي) / Anti-Link + نظام XP
+│   ├── guildMemberAdd.js     ← بطاقة ترحيب Canvas + الرتبة التلقائية + لوق
+│   ├── guildMemberRemove.js  ← الوداع + كشف الطرد الجماعي
+│   ├── guildBanAdd.js        ← لوق + حماية Mass Ban
+│   ├── webhookCreate.js      ← لوق + حماية سبام الويب هوك
 │   ├── messageDelete.js / messageUpdate.js   ← لوقات الرسائل
-│   ├── channelCreate.js / channelDelete.js   ← لوقات القنوات
-│   └── roleCreate.js / roleDelete.js         ← لوقات الرتب
+│   ├── channelCreate.js / channelDelete.js   ← لوق + كشف Raid + استعادة القنوات
+│   └── roleCreate.js / roleDelete.js         ← لوق + استعادة الرتب
+├── modules/
+│   ├── antiNuke.js          ← محرك الحماية الذكية (نافذة زمنية + استعادة)
+│   ├── economy.js           ← نظام الاقتصاد (data/economy.json)
+│   ├── welcomeCards.js      ← توليد بطاقات الترحيب (Canvas)
+│   ├── liveHub.js           ← بث الأحداث للوحة (SSE)
+│   └── crashGuard.js        ← منع توقف البوت نهائياً
+├── dashboard/
+│   ├── server.js            ← خادم اللوحة (مصادقة + SSE + APIs)
+│   └── public/              ← واجهة SPA (index.html + style.css + app.js)
 ├── utils/
 │   ├── settings.js          ← إعدادات كل سيرفر (JSON)
 │   ├── levels.js            ← نظام المستويات
 │   ├── warnings.js          ← نظام التحذيرات
 │   ├── logger.js            ← تسجيل الأحداث في قنوات اللوقات
 │   ├── musicUI.js           ← عناصر واجهة الموسيقى
+│   ├── musicSearch.js       ← فال باك تلقائي لـ SoundCloud
 │   └── embeds.js            ← قوالب Embeds موحدة
 └── data/                    ← ملفات البيانات (تُنشأ تلقائياً)
 ```
