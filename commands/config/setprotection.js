@@ -16,7 +16,8 @@ module.exports = {
                 .setRequired(true)
                 .addChoices(
                     { name: 'الحماية من السبام (Anti-Spam)', value: 'antiSpam' },
-                    { name: 'الحماية من الروابط (Anti-Link)', value: 'antiLink' }
+                    { name: 'الحماية من الروابط (Anti-Link)', value: 'antiLink' },
+                    { name: 'الحماية من التدمير (Anti-Nuke)', value: 'antiNuke' }
                 )
         )
         .addBooleanOption(opt => opt.setName('تفعيل').setDescription('تفعيل أو تعطيل').setRequired(true))
@@ -29,12 +30,20 @@ module.exports = {
 
         const system = interaction.options.getString('النظام');
         const enabled = interaction.options.getBoolean('تفعيل');
-        const systemName = system === 'antiSpam' ? 'الحماية من السبام' : 'الحماية من الروابط';
+        const systemName = {
+            antiSpam: 'الحماية من السبام',
+            antiLink: 'الحماية من الروابط',
+            antiNuke: 'الحماية من التدمير (Anti-Nuke)'
+        }[system];
 
         updateGuildSettings(interaction.guild.id, { [system]: enabled });
 
+        const hint = system === 'antiNuke' && enabled
+            ? '\n\n> 💡 يمكنك ضبط **الحد الأقصى** والقائمة البيضاء من لوحة التحكم (تبويب الحماية) أو عبر أمر `/antinuke`.'
+            : '';
+
         await interaction.reply({
-            embeds: [successEmbed('تم التحديث', `تم ${enabled ? 'تفعيل' : 'تعطيل'} نظام **${systemName}** بنجاح.`)]
+            embeds: [successEmbed('تم التحديث', `تم ${enabled ? 'تفعيل' : 'تعطيل'} نظام **${systemName}** بنجاح.${hint}`)]
         });
     }
 };

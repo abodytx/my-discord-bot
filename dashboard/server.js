@@ -176,6 +176,16 @@ function buildApp() {
         res.redirect('/login');
     });
 
+    // ---------- فحص الصحة (Healthcheck لـ Render) ----------
+    app.get('/healthz', (req, res) => {
+        res.json({
+            status: 'ok',
+            bot: Boolean(client.readyAt),
+            uptime: Math.floor(process.uptime()),
+            guilds: client.guilds.cache.size
+        });
+    });
+
     // ---------- SSE Live ----------
     app.get('/api/live', requireApiAuth, (req, res) => {
         res.writeHead(200, {

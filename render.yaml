@@ -1,0 +1,27 @@
+# =====================================================
+# Render Blueprint — نشر البوت ولوحة التحكم على Render
+# ارفع المشروع إلى GitHub ثم أنشئ Blueprint من هذا الملف
+# =====================================================
+
+services:
+  - type: web
+    name: discord-bot-dashboard
+    runtime: node
+    plan: free
+    buildCommand: npm install
+    startCommand: node index.js
+    healthCheckPath: /healthz
+    autoDeploy: true
+    envVars:
+      - key: DISCORD_TOKEN
+        sync: false            # اضبطه من لوحة Render (Secret)
+      - key: CLIENT_ID
+        sync: false
+      - key: DASHBOARD_PASSWORD
+        sync: false            # ضع كلمة مرور قوية
+      - key: DASHBOARD_SECRET
+        sync: false
+      - key: PORT
+        value: 3000
+      - key: YOUTUBE_COOKIE
+        sync: false            # اختياري لتشغيل يوتيوب (SID=...; HSID=...; SSID=...)
