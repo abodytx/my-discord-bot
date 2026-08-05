@@ -62,13 +62,13 @@ const player = new Player(client);
 client.player = player;
 
 async function setupExtractors() {
+    for (const ext of DefaultExtractors) {
+        await player.extractors.register(ext);
+    }
     await player.extractors.register(YoutubeExtractor, {
         cookie: process.env.YOUTUBE_COOKIE || null,
         disableYTJSLog: true
     });
-    for (const ext of DefaultExtractors) {
-        await player.extractors.register(ext);
-    }
     console.log('🎵 تم تحميل محركات الموسيقى بنجاح');
 }
 
