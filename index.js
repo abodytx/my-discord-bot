@@ -1,5 +1,5 @@
 // =====================================================
-// الملف الرئيسي - لوحة التحكم الأسطورية الشاملة
+// الملف الرئيسي - لوحة التحكم الأسطورية الشاملة (مع نظام الموسيقى)
 // =====================================================
 
 require('dotenv').config();
@@ -7,6 +7,8 @@ const fs = require('fs');
 const path = require('path');
 const express = require('express');
 const { Client, GatewayIntentBits, Partials, Collection, ActivityType } = require('discord.js');
+const { Player } = require('discord-player');
+const { DefaultExtractors } = require('@discord-player/extractor');
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -39,13 +41,17 @@ const client = new Client({
         GatewayIntentBits.GuildMembers,
         GatewayIntentBits.GuildMessages,
         GatewayIntentBits.MessageContent,
-        GatewayIntentBits.GuildVoiceStates // ضروري للموسيقى لاحقاً
+        GatewayIntentBits.GuildVoiceStates // ضروري جداً للموسيقى
     ],
     partials: [Partials.Channel, Partials.Message]
 });
 
 client.commands = new Collection();
 client.spamTracker = new Collection();
+
+// إعداد محرك الموسيقى
+const player = new Player(client);
+player.extractors.loadMulti(DefaultExtractors);
 
 // تحميل الأوامر والأحداث
 function loadFiles(dir, collection, isEvent = false) {
@@ -69,7 +75,7 @@ loadFiles(path.join(__dirname, 'commands'), client.commands, false);
 loadFiles(path.join(__dirname, 'events'), null, true);
 
 // =====================================================
-// واجهة لوحة التحكم الأسطورية (HTML/CSS/JS)
+// واجهة لوحة التحكم (HTML/CSS/JS)
 // =====================================================
 
 app.get('/', (req, res) => {
@@ -82,10 +88,18 @@ app.get('/', (req, res) => {
         ram: (process.memoryUsage().heapUsed / 1024 / 1024).toFixed(2)
     };
 
-    let channelsOptions = '<option value="">-- اختر القناة --</option>';
+    let channelsOptions = '<option value="">-- اختر القناة النصية --</option>';
     client.channels.cache.filter(c => c.isTextBased() && c.type === 0).forEach(c => {
         channelsOptions += `<option value="${c.id}">#${c.name} (${c.guild.name})</option>`;
     });
+
+    let voiceOptions = '<option value="">-- اختر الروم الصوتي --</option>';
+    client.channels.cache.filter(c => c.isVoiceBased()).forEach(c => {
+        voiceOptions += `<option value="${c.id}">🔊 ${c.name} (${c.guild.name})</option>`;
+    });
+
+    // جلب معرف أول سيرفر لزر إيقاف الموسيقى
+    const firstGuildId = client.guilds.cache.first()?.id || '';
 
     const html = `
     <!DOCTYPE html>
@@ -127,134 +141,78 @@ app.get('/', (req, res) => {
                 <div class="nav-item p-3 rounded-lg font-medium" onclick="switchTab('music')"><i class="fa-solid fa-music ml-2"></i> مشغل الموسيقى</div>
                 <div class="nav-item p-3 rounded-lg font-medium" onclick="switchTab('control')"><i class="fa-solid fa-robot ml-2"></i> تحكم البوت والرسائل</div>
             </nav>
-            <div class="text-xs text-center text-gray-500 mt-auto">V 2.0.0 • Master Dashboard</div>
         </aside>
 
         <!-- Main Content -->
         <main class="flex-1 overflow-y-auto p-8 relative">
             
-            <!-- Dashboard Tab -->
             <section id="dashboard" class="tab-content active">
                 <h1 class="text-3xl font-bold mb-6 text-white border-b border-slate-700 pb-3">📊 الإحصائيات الحية</h1>
                 <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
-                    <div class="glass-panel p-6 rounded-2xl text-center shadow-lg">
-                        <i class="fa-solid fa-server text-4xl text-blue-500 mb-3"></i>
-                        <h3 class="text-gray-400">السيرفرات</h3>
-                        <p class="text-3xl font-bold">${stats.servers}</p>
-                    </div>
-                    <div class="glass-panel p-6 rounded-2xl text-center shadow-lg">
-                        <i class="fa-solid fa-users text-4xl text-green-500 mb-3"></i>
-                        <h3 class="text-gray-400">الأعضاء</h3>
-                        <p class="text-3xl font-bold">${stats.users}</p>
-                    </div>
-                    <div class="glass-panel p-6 rounded-2xl text-center shadow-lg">
-                        <i class="fa-solid fa-network-wired text-4xl text-yellow-500 mb-3"></i>
-                        <h3 class="text-gray-400">الاستجابة (Ping)</h3>
-                        <p class="text-3xl font-bold">${stats.ping} ms</p>
-                    </div>
-                    <div class="glass-panel p-6 rounded-2xl text-center shadow-lg">
-                        <i class="fa-solid fa-memory text-4xl text-purple-500 mb-3"></i>
-                        <h3 class="text-gray-400">استهلاك الرام</h3>
-                        <p class="text-3xl font-bold">${stats.ram} MB</p>
-                    </div>
+                    <div class="glass-panel p-6 rounded-2xl text-center shadow-lg"><h3 class="text-gray-400">السيرفرات</h3><p class="text-3xl font-bold">${stats.servers}</p></div>
+                    <div class="glass-panel p-6 rounded-2xl text-center shadow-lg"><h3 class="text-gray-400">الأعضاء</h3><p class="text-3xl font-bold">${stats.users}</p></div>
+                    <div class="glass-panel p-6 rounded-2xl text-center shadow-lg"><h3 class="text-gray-400">الاستجابة (Ping)</h3><p class="text-3xl font-bold">${stats.ping} ms</p></div>
+                    <div class="glass-panel p-6 rounded-2xl text-center shadow-lg"><h3 class="text-gray-400">الرام</h3><p class="text-3xl font-bold">${stats.ram} MB</p></div>
                 </div>
             </section>
 
-            <!-- Welcome Tab -->
             <section id="welcome" class="tab-content">
                 <h1 class="text-3xl font-bold mb-6 text-white border-b border-slate-700 pb-3">👋 إعدادات الترحيب</h1>
                 <form action="/api/settings/welcome" method="POST" class="glass-panel p-6 rounded-2xl max-w-2xl mx-auto shadow-lg">
                     <div class="mb-4 flex items-center justify-between">
                         <label class="font-bold text-lg">تفعيل الترحيب:</label>
-                        <select name="enabled" class="w-32">
-                            <option value="true" ${config.welcome.enabled ? 'selected' : ''}>مفعل ✅</option>
-                            <option value="false" ${!config.welcome.enabled ? 'selected' : ''}>معطل ❌</option>
-                        </select>
+                        <select name="enabled" class="w-32"><option value="true" ${config.welcome.enabled ? 'selected' : ''}>مفعل ✅</option><option value="false" ${!config.welcome.enabled ? 'selected' : ''}>معطل ❌</option></select>
                     </div>
-                    <div class="mb-4">
-                        <label>قناة الترحيب:</label>
-                        <select name="channel" required>${channelsOptions}</select>
-                    </div>
-                    <div class="mb-6">
-                        <label>نص رسالة الترحيب (استخدم {user} لعمل منشن):</label>
-                        <textarea name="message" rows="4" required>${config.welcome.message}</textarea>
-                    </div>
-                    <button type="submit" class="btn"><i class="fa-solid fa-floppy-disk ml-2"></i> حفظ الإعدادات</button>
+                    <div class="mb-4"><label>قناة الترحيب:</label><select name="channel" required>${channelsOptions}</select></div>
+                    <div class="mb-6"><label>نص الترحيب:</label><textarea name="message" rows="4" required>${config.welcome.message}</textarea></div>
+                    <button type="submit" class="btn">حفظ الإعدادات</button>
                 </form>
             </section>
 
-            <!-- Logs Tab -->
             <section id="logs" class="tab-content">
-                <h1 class="text-3xl font-bold mb-6 text-white border-b border-slate-700 pb-3">🛡️ نظام اللوقات (السجلات)</h1>
+                <h1 class="text-3xl font-bold mb-6 text-white border-b border-slate-700 pb-3">🛡️ نظام اللوقات</h1>
                 <form action="/api/settings/logs" method="POST" class="glass-panel p-6 rounded-2xl max-w-2xl mx-auto shadow-lg">
-                    <div class="mb-4">
-                        <label>قناة إرسال اللوقات:</label>
-                        <select name="channel" required>${channelsOptions}</select>
-                    </div>
-                    <div class="mb-6">
-                        <label class="block mb-2">الأحداث المراد مراقبتها:</label>
-                        <div class="grid grid-cols-2 gap-3 bg-slate-900 p-4 rounded-lg">
-                            <label><input type="checkbox" name="events" value="msgDelete" checked> حذف الرسائل</label>
-                            <label><input type="checkbox" name="events" value="msgEdit" checked> تعديل الرسائل</label>
-                            <label><input type="checkbox" name="events" value="roleUpdate" checked> تغيير الرتب</label>
-                            <label><input type="checkbox" name="events" value="vcJoin" checked> الدخول للصوتي</label>
-                        </div>
-                    </div>
-                    <button type="submit" class="btn"><i class="fa-solid fa-shield-halved ml-2"></i> حفظ وتفعيل الحماية</button>
+                    <div class="mb-4"><label>قناة اللوقات:</label><select name="channel" required>${channelsOptions}</select></div>
+                    <button type="submit" class="btn">تفعيل الحماية</button>
                 </form>
             </section>
 
-            <!-- Music Tab -->
+            <!-- 🎵 تبويبة الموسيقى المحدثة -->
             <section id="music" class="tab-content">
                 <h1 class="text-3xl font-bold mb-6 text-white border-b border-slate-700 pb-3">🎵 مشغل الموسيقى المركزي</h1>
                 <div class="glass-panel p-6 rounded-2xl max-w-2xl mx-auto shadow-lg text-center">
-                    <div class="w-32 h-32 bg-slate-800 rounded-full mx-auto flex items-center justify-center mb-4 border-4 border-blue-500 shadow-[0_0_20px_rgba(59,130,246,0.3)]">
+                    <div class="w-32 h-32 bg-slate-800 rounded-full mx-auto flex items-center justify-center mb-6 border-4 border-blue-500 shadow-[0_0_20px_rgba(59,130,246,0.3)]">
                         <i class="fa-solid fa-compact-disc text-6xl text-blue-400 animate-spin" style="animation-duration: 3s;"></i>
                     </div>
-                    <form action="/api/music/play" method="POST" class="mb-6">
-                        <label class="text-right block mb-2">اسم الأغنية أو الرابط (يوتيوب/سبوتيفاي):</label>
+                    <form action="/api/music/play" method="POST" class="mb-6 text-right">
+                        <label class="block mb-2 font-bold text-blue-400">1. اختر الروم الصوتي للبوت:</label>
+                        <select name="voiceChannel" required class="mb-4">${voiceOptions}</select>
+                        
+                        <label class="block mb-2 font-bold text-blue-400">2. اسم الأغنية أو الرابط:</label>
                         <div class="flex gap-2">
-                            <input type="text" name="song" placeholder="اكتب هنا..." required>
+                            <input type="text" name="song" placeholder="ابحث عن مقطع، شيلة، أو رابط يوتيوب..." required>
                             <button type="submit" class="btn w-32"><i class="fa-solid fa-play"></i> تشغيل</button>
                         </div>
                     </form>
+                    <hr class="border-slate-700 mb-6">
                     <div class="flex justify-center gap-4">
-                        <button class="btn btn-danger w-32"><i class="fa-solid fa-stop"></i> إيقاف</button>
-                        <button class="btn w-32" style="background:#8b5cf6;"><i class="fa-solid fa-forward-step"></i> تخطي</button>
+                        <form action="/api/music/stop" method="POST" class="m-0">
+                            <input type="hidden" name="guildId" value="${firstGuildId}">
+                            <button type="submit" class="btn btn-danger w-40"><i class="fa-solid fa-stop"></i> إيقاف وطرد البوت</button>
+                        </form>
                     </div>
-                    <p class="text-xs text-gray-400 mt-4">* ملاحظة: يتطلب تثبيت حزمة discord-player لتعمل الأزرار بالكامل.</p>
                 </div>
             </section>
 
-            <!-- Control Tab -->
             <section id="control" class="tab-content">
-                <h1 class="text-3xl font-bold mb-6 text-white border-b border-slate-700 pb-3">🎛️ تحكم البوت الشامل</h1>
-                
+                <h1 class="text-3xl font-bold mb-6 text-white border-b border-slate-700 pb-3">🎛️ تحكم البوت</h1>
                 <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
-                    <!-- Send Message -->
-                    <form action="/api/bot/say" method="POST" class="glass-panel p-6 rounded-2xl shadow-lg">
-                        <h2 class="text-xl font-bold mb-4 text-blue-400"><i class="fa-solid fa-bullhorn"></i> إرسال رسالة كـ البوت</h2>
-                        <select name="channel" required class="mb-3">${channelsOptions}</select>
-                        <textarea name="message" rows="3" placeholder="نص الرسالة..." required class="mb-3"></textarea>
-                        <button type="submit" class="btn"><i class="fa-solid fa-paper-plane"></i> إرسال</button>
-                    </form>
-
-                    <!-- Change Status -->
-                    <form action="/api/bot/status" method="POST" class="glass-panel p-6 rounded-2xl shadow-lg">
-                        <h2 class="text-xl font-bold mb-4 text-blue-400"><i class="fa-solid fa-gamepad"></i> تغيير حالة البوت (Activity)</h2>
-                        <select name="type" class="mb-3">
-                            <option value="Playing">يلعب (Playing)</option>
-                            <option value="Watching">يشاهد (Watching)</option>
-                            <option value="Listening">يستمع إلى (Listening)</option>
-                        </select>
-                        <input type="text" name="text" placeholder="مثال: يخدم السيرفر بكل حب..." value="${config.bot.activityText}" required class="mb-3">
-                        <button type="submit" class="btn"><i class="fa-solid fa-arrows-rotate"></i> تحديث الحالة</button>
-                    </form>
+                    <form action="/api/bot/say" method="POST" class="glass-panel p-6 rounded-2xl"><h2 class="text-xl font-bold mb-4">إرسال رسالة</h2><select name="channel" required class="mb-3">${channelsOptions}</select><textarea name="message" rows="3" required class="mb-3"></textarea><button type="submit" class="btn">إرسال</button></form>
+                    <form action="/api/bot/status" method="POST" class="glass-panel p-6 rounded-2xl"><h2 class="text-xl font-bold mb-4">حالة البوت</h2><select name="type" class="mb-3"><option value="Playing">يلعب</option><option value="Watching">يشاهد</option><option value="Listening">يستمع</option></select><input type="text" name="text" value="${config.bot.activityText}" required class="mb-3"><button type="submit" class="btn">تحديث</button></form>
                 </div>
             </section>
 
         </main>
-
         <script>
             function switchTab(tabId) {
                 document.querySelectorAll('.tab-content').forEach(el => el.classList.remove('active'));
@@ -269,52 +227,47 @@ app.get('/', (req, res) => {
     res.send(html);
 });
 
-// =====================================================
-// مسارات الاستقبال (API Routes)
-// =====================================================
-
+// APIs
 function handlePost(req, res, successMsg) {
     saveConfig();
     res.send(`<script>alert('✅ ${successMsg}'); window.location.href='/';</script>`);
 }
 
-// 1. الترحيب
-app.post('/api/settings/welcome', (req, res) => {
-    config.welcome = { enabled: req.body.enabled === 'true', channel: req.body.channel, message: req.body.message };
-    handlePost(req, res, 'تم حفظ إعدادات الترحيب!');
-});
+app.post('/api/settings/welcome', (req, res) => { config.welcome = { enabled: req.body.enabled === 'true', channel: req.body.channel, message: req.body.message }; handlePost(req, res, 'تم الحفظ!'); });
+app.post('/api/settings/logs', (req, res) => { config.logs = { enabled: true, channel: req.body.channel }; handlePost(req, res, 'تم الحفظ!'); });
+app.post('/api/bot/say', async (req, res) => { try { const ch = await client.channels.fetch(req.body.channel); if(ch) await ch.send(req.body.message); handlePost(req, res, 'تم الإرسال!'); } catch (e) { res.send('<script>alert("خطأ");</script>'); } });
+app.post('/api/bot/status', (req, res) => { const { type, text } = req.body; const types = { Playing: ActivityType.Playing, Watching: ActivityType.Watching, Listening: ActivityType.Listening }; client.user.setPresence({ activities: [{ name: text, type: types[type] }], status: 'online' }); config.bot.activityText = text; handlePost(req, res, 'تم التحديث!'); });
 
-// 2. اللوقات
-app.post('/api/settings/logs', (req, res) => {
-    config.logs = { enabled: true, channel: req.body.channel, events: req.body.events || [] };
-    handlePost(req, res, 'تم حفظ إعدادات اللوقات!');
-});
-
-// 3. إرسال رسالة
-app.post('/api/bot/say', async (req, res) => {
+// مسارات الموسيقى
+app.post('/api/music/play', async (req, res) => {
     try {
-        const channel = await client.channels.fetch(req.body.channel);
-        if (channel) await channel.send(req.body.message);
-        handlePost(req, res, 'تم إرسال الرسالة بنجاح!');
+        const vc = client.channels.cache.get(req.body.voiceChannel);
+        if (!vc) throw new Error('الروم الصوتي غير موجود!');
+        
+        await player.play(vc, req.body.song, {
+            nodeOptions: { metadata: { channel: vc } }
+        });
+        
+        handlePost(req, res, 'جاري الدخول وتشغيل المقطع!');
+    } catch (e) {
+        console.error("Music Error:", e);
+        res.send(`<script>alert('❌ خطأ: ${e.message}'); window.location.href='/';</script>`);
+    }
+});
+
+app.post('/api/music/stop', (req, res) => {
+    try {
+        const queue = player.nodes.get(req.body.guildId);
+        if (queue) {
+            queue.delete();
+            handlePost(req, res, 'تم إيقاف الموسيقى ومغادرة الروم.');
+        } else {
+            res.send(`<script>alert('لا توجد موسيقى تعمل حالياً!'); window.location.href='/';</script>`);
+        }
     } catch (e) {
         res.send(`<script>alert('❌ خطأ: ${e.message}'); window.location.href='/';</script>`);
     }
 });
 
-// 4. تحديث الحالة
-app.post('/api/bot/status', (req, res) => {
-    const { type, text } = req.body;
-    const types = { Playing: ActivityType.Playing, Watching: ActivityType.Watching, Listening: ActivityType.Listening };
-    client.user.setPresence({ activities: [{ name: text, type: types[type] }], status: 'online' });
-    config.bot.activityText = text;
-    handlePost(req, res, 'تم تغيير حالة البوت!');
-});
-
-// 5. الموسيقى (أساس الاستقبال)
-app.post('/api/music/play', (req, res) => {
-    // هنا سيتم ربط مكتبة الموسيقى لاحقاً
-    res.send(`<script>alert('🎵 تم استلام طلب الأغنية! (يحتاج البوت لتفعيل نظام الموسيقى الداخلي لتعمل)'); window.location.href='/';</script>`);
-});
-
-app.listen(PORT, () => console.log(`🌐 اللوحة الأسطورية تعمل على منفذ: ${PORT}`));
+app.listen(PORT, () => console.log(`🌐 اللوحة الأسطورية تعمل!`));
 client.login(process.env.TOKEN || process.env.DISCORD_TOKEN);
