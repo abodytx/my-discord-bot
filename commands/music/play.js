@@ -3,7 +3,8 @@
 // =====================================================
 
 const { SlashCommandBuilder, PermissionFlagsBits } = require('discord.js');
-const { errorEmbed, baseEmbed } = require('../../utils/embeds');
+const { errorEmbed, baseEmbed, infoEmbed } = require('../../utils/embeds');
+const { searchMusic, hasYouTubeCookie } = require('../../utils/musicSearch');
 
 module.exports = {
     data: new SlashCommandBuilder()
@@ -33,13 +34,30 @@ module.exports = {
         await interaction.deferReply();
 
         try {
-            const searchResult = await client.player.search(query, {
-                requestedBy: interaction.user
-            });
+            let searchResult;
+            try {
+                searchResult = await searchMusic(client.player, query, {
+                    requestedBy: interaction.user
+                });
+            } catch (err) {
+                if (err.code === 'YOUTUBE_NEEDS_COOKIE') {
+                    return interaction.followUp({
+                        embeds: [infoEmbed('⚠️ يوتيوب محجوب حالياً', `يوتيوب يمنع البث بدون تسجيل دخول.\nاستخدم **اسم الأغنية** أو **رابط SoundCloud**، أو أضف كوكيز يوتيوب في ملف `.env` (انظر README).`)]
+                    });
+                }
+                throw err;
+            }
 
             if (!searchResult.hasTracks()) {
                 return interaction.followUp({
                     embeds: [errorEmbed('لا توجد نتائج', `لم يتم العثور على أي نتائج لـ "${query}".`)]
+                });
+            }
+
+            const sourceLabel = searchResult.tracks[0]?.source === 'youtube' ? 'يوتيوب' : 'SoundCloud';
+            if (!hasYouTubeCookie()) {
+                await interaction.followUp({
+                    embeds: [infoEmbed('🎧 تم التشغيل عبر SoundCloud', `يوتيوب محجوب بدون كوكيز، تم البحث على **SoundCloud** بدلاً منه.\nللحصول على يوتيوب أضف \`YOUTUBE_COOKIE\` في ملف \`.env\`.`)]
                 });
             }
 
@@ -53,11 +71,13 @@ module.exports = {
                 }
             });
 
-            await interaction.followUp({
-                embeds: [baseEmbed().setTitle('🎵 تمت الإضافة')
-                    .setDescription(`تمت إضافة **${searchResult.tracks.length}** مقطع إلى القائمة.`)
-                    .setFooter({ text: 'جارٍ التشغيل...' })]
-            });
+            if (hasYouTubeCookie()) {
+                await interaction.followUp({
+                    embeds: [baseEmbed().setTitle('🎵 تمت الإضافة')
+                        .setDescription(`تمت إضافة **${searchResult.tracks.length}** مقطع إلى القائمة عبر ${sourceLabel}.`)
+                        .setFooter({ text: 'جارٍ التشغيل...' })]
+                });
+            }
         } catch (err) {
             console.error('Play error:', err);
             await interaction.followUp({

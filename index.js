@@ -22,6 +22,7 @@ const { YoutubeExtractor } = require('discord-player-youtube');
 const { getGuildSettings, updateGuildSettings } = require('./utils/settings');
 const { nowPlayingEmbed, controlRow } = require('./utils/musicUI');
 const { infoEmbed, errorEmbed } = require('./utils/embeds');
+const { searchMusic } = require('./utils/musicSearch');
 
 // =====================================================
 // الإعدادات العامة للبوت (config.json)
@@ -510,7 +511,7 @@ app.post('/api/music/play', requireAuth, async (req, res) => {
         const textChannel = guild.channels.cache.get(req.body.textChannel)
             || guild.channels.cache.find(c => c.isTextBased());
 
-        const searchResult = await player.search(req.body.song, { requestedBy: client.user });
+        const searchResult = await searchMusic(player, req.body.song, { requestedBy: client.user });
 
         if (!searchResult.hasTracks()) {
             throw new Error('لم يتم العثور على نتائج');
