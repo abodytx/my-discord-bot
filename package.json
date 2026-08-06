@@ -18,7 +18,7 @@
     "test": "vitest run",
     "test:watch": "vitest",
     "migrate": "tsx scripts/migrate-json-to-mongo.ts",
-    "prepare": "husky"
+    "prepare": "husky && npm run build"
   },
   "dependencies": {
     "@discord-player/extractor": "^7.2.0",

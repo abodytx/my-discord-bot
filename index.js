@@ -11,11 +11,20 @@ const fs = require('fs');
 const path = require('path');
 
 const distEntry = path.join(__dirname, 'dist', 'index.js');
+const srcEntry = path.join(__dirname, 'src', 'index.ts');
 
 if (!fs.existsSync(distEntry)) {
-    // eslint-disable-next-line no-console
-    console.log('[bootstrap] dist/ غير موجود — تنفيذ البناء (tsc) ...');
-    require('child_process').execSync('npx tsc', { stdio: 'inherit' });
+    // dist/ غير موجود (مثلاً خطط مجانية منخفضة الذاكرة)
+    // الأولوية: tsx (خفيف جداً — يعتمد على esbuild) ثم tsc كخيار أخير
+    try {
+        require('tsx/cjs'); // يفعّل دعم استيراد TypeScript مباشرة
+        require(srcEntry);
+    } catch (err) {
+        // eslint-disable-next-line no-console
+        console.log('[bootstrap] tsx غير متاح — تنفيذ البناء (tsc) ...');
+        require('child_process').execSync('npx tsc', { stdio: 'inherit' });
+        require(distEntry);
+    }
+} else {
+    require(distEntry);
 }
-
-require(distEntry);
