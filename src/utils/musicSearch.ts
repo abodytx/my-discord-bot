@@ -1,17 +1,47 @@
 // =====================================================
 // مساعد بحث الموسيقى مع فال باك تلقائي
-// - إذا كانت الكوكيز غير مضبوطة، يستخدم SoundCloud بدلاً من YouTube
+// - إذا كانت الكوكيز غير مضبوطة/مرفوضة، يستخدم SoundCloud بدلاً من YouTube
 //   لأن يوتيوب يمنع البث المجهول مؤخراً
 // =====================================================
 
 import { Player, QueryType } from 'discord-player';
+import { Innertube } from 'youtubei.js';
 
 const YT_URL = /^(https?:\/\/)?(www\.|m\.|music\.)?(youtube\.com|youtu\.be)\//i;
 
 export const YOUTUBE_NEEDS_COOKIE = 'youtube_needs_cookie';
 
+// بعد التحقق من الكوكيز عند الإقلاع: null = لم يُفحص بعد، true/false = النتيجة.
+// يوتيوب يحجب البث حتى مع كوكيز صالحة أحياناً، لذا الفحص يدل على أن الحساب معرّف فعلاً.
+let _youtubeCookieValid: boolean | null = null;
+
+export function setYouTubeCookieValid(valid: boolean): void {
+    _youtubeCookieValid = valid;
+}
+
+/**
+ * هل لدينا كوكيز يوتيوب صالحة (تم التحقق منها عند الإقلاع)؟
+ * إذا لم يُفحص بعد نتعامل مع وجود الكوكيز كافتراضية أصلية (تفاؤلية).
+ */
 export function hasYouTubeCookie(): boolean {
+    if (_youtubeCookieValid === false) return false;
     return Boolean(process.env.YOUTUBE_COOKIE && process.env.YOUTUBE_COOKIE.trim());
+}
+
+/**
+ * يتحقق فعلياً من صلاحية الكوكيز عبر محاولة جلب بيانات الحساب من يوتيوب.
+ * يعيد true فقط إذا نجح يوتيوب في التعرف على الحساب.
+ */
+export async function validateYouTubeCookie(): Promise<boolean> {
+    const raw = String(process.env.YOUTUBE_COOKIE || '').trim();
+    if (!raw) return false;
+    try {
+        const tube = await Innertube.create({ cookie: raw, retrieve_player: false });
+        await tube.account.getInfo();
+        return true;
+    } catch {
+        return false;
+    }
 }
 
 type SearchOptions = NonNullable<Parameters<Player['search']>[1]>;

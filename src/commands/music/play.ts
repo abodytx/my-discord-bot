@@ -65,7 +65,7 @@ export default {
                         embeds: [
                             infoEmbed(
                                 '⚠️ يوتيوب محجوب حالياً',
-                                `يوتيوب يمنع البث بدون تسجيل دخول.\nاستخدم **اسم الأغنية** أو **رابط SoundCloud**، أو أضف كوكيز يوتيوب في ملف .env (انظر README).`
+                                `يوتيوب يمنع البث الآلي من هذه البيئة.\nاستخدم **اسم الأغنية** وسيتم البحث على **SoundCloud** بدلاً منه، أو استخدم **رابط SoundCloud** مباشرة.`
                             )
                         ]
                     });
@@ -85,7 +85,7 @@ export default {
                     embeds: [
                         infoEmbed(
                             '🎧 تم التشغيل عبر SoundCloud',
-                            `يوتيوب محجوب بدون كوكيز، تم البحث على **SoundCloud** بدلاً منه.\nللحصول على يوتيوب أضف \`YOUTUBE_COOKIE\` في ملف \`.env\`.`
+                            `يوتيوب محجوب حالياً، تم البحث على **SoundCloud** بدلاً منه.`
                         )
                     ]
                 });
@@ -128,7 +128,7 @@ export default {
                 } else {
                     const hint =
                         e.message.toLowerCase().includes('sign in') || e.message.includes('login')
-                            ? '\n\n> 💡 **السبب الشائع:** كوكيز يوتيوب منتهية أو محجوبة. حدّث `YOUTUBE_COOKIE` أو استخدم اسم الأغنية وسيتحول لـ SoundCloud تلقائياً.'
+                            ? '\n\n> 💡 **السبب الشائع:** يوتيوب يحجب البث الآلي. استخدم اسم الأغنية وسيتم البحث على SoundCloud تلقائياً.'
                             : '';
                     return interaction.followUp({
                         embeds: [errorEmbed('تعذر التشغيل', `حدث خطأ: ${e.message}${hint}`)]
@@ -141,7 +141,7 @@ export default {
                     embeds: [
                         infoEmbed(
                             '🎧 تشغيل عبر SoundCloud',
-                            'فشل بث يوتيوب (كوكيز منتهية غالباً)، تم التحويل تلقائياً إلى **SoundCloud**.'
+                            'فشل بث يوتيوب (محجوب غالباً)، تم التحويل تلقائياً إلى **SoundCloud**.'
                         )
                     ]
                 });

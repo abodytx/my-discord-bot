@@ -24,6 +24,7 @@ import { createDashboard } from './dashboard/server';
 import { nowPlayingEmbed, controlRow } from './utils/musicUI';
 import { infoEmbed, errorEmbed } from './utils/embeds';
 import { sanitize } from './utils/logger';
+import { setYouTubeCookieValid, validateYouTubeCookie, hasYouTubeCookie } from './utils/musicSearch';
 import { initStore } from './storage';
 import { restoreGiveaways } from './modules/giveaway';
 import type { CommandModule, EventModule, ExtendedClient } from './types';
@@ -62,6 +63,18 @@ const player = new Player(client);
 client.player = player;
 
 async function setupExtractors(): Promise<void> {
+    // تحقق من صلاحية كوكيز يوتيوب مرة واحدة عند الإقلاع.
+    // إذا كانت مرفوضة (يوتيوب يحجب البث غالباً مؤخراً) نُفعّل SoundCloud مباشرة.
+    if (process.env.YOUTUBE_COOKIE && process.env.YOUTUBE_COOKIE.trim()) {
+        const valid = await validateYouTubeCookie();
+        setYouTubeCookieValid(valid);
+        if (valid) {
+            logger.info('✅ كوكيز يوتيوب صالحة — تم تفعيل البث عبر يوتيوب.');
+        } else {
+            logger.warn('⚠️ كوكيز يوتيوب مرفوضة من يوتيوب — سيتم البحث عبر SoundCloud للأغاني.');
+        }
+    }
+
     // ملاحظة: تسجيل الـ extractors الافتراضية (SoundCloud...) أولاً
     // حتى لا يلوث YoutubeExtractor نتائج البحث (سبق إصلاحه)
     for (const ext of DefaultExtractors) {
@@ -69,7 +82,7 @@ async function setupExtractors(): Promise<void> {
         await (player.extractors.register as any)(ext);
     }
     await player.extractors.register(YoutubeExtractor, {
-        cookie: process.env.YOUTUBE_COOKIE || undefined,
+        cookie: hasYouTubeCookie() ? process.env.YOUTUBE_COOKIE || undefined : undefined,
         disableYTJSLog: true
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
     } as any);
