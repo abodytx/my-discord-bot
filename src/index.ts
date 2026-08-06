@@ -81,11 +81,19 @@ async function setupExtractors(): Promise<void> {
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
         await (player.extractors.register as any)(ext);
     }
-    await player.extractors.register(YoutubeExtractor, {
-        cookie: hasYouTubeCookie() ? process.env.YOUTUBE_COOKIE || undefined : undefined,
-        disableYTJSLog: true
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    } as any);
+
+    // تسجيل يوتيوب فقط عند توفر كوكيز صالحة، لأن الإنشاط ينشئ كائن Innertube
+    // ضخم (يستهلك ذاكرة كبيرة على الخطة المجانية) حتى لو كان يوتيوب محجوباً.
+    if (hasYouTubeCookie()) {
+        await player.extractors.register(YoutubeExtractor, {
+            cookie: process.env.YOUTUBE_COOKIE || undefined,
+            disableYTJSLog: true
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        } as any);
+        logger.info('🎵 تم تفعيل محرك يوتيوب.');
+    } else {
+        logger.info('🎵 يوتيوب معطّل (محجوب) — تم توفير الذاكرة، SoundCloud هو المصدر.');
+    }
     logger.info('🎵 تم تحميل محركات الموسيقى بنجاح');
 }
 
@@ -112,6 +120,9 @@ player.events.on('emptyChannel', (queue: GuildQueue) => {
 });
 
 function notifyPlaybackError(queue: GuildQueue | null, error: Error): void {
+    const mem = process.memoryUsage();
+    const memInfo = ` (الذاكرة: ${(mem.rss / 1024 / 1024).toFixed(0)}MB / حد 512MB)`;
+    logger.error(`🎵 فشل تشغيل المقطع: ${error?.message}${memInfo}`);
     const { channel } = (queue?.metadata as { channel?: { send: (payload: unknown) => Promise<unknown> } }) || {};
     if (!channel) return;
     const message = String(error?.message || error || 'خطأ غير معروف');
