@@ -253,7 +253,71 @@ function buildApp() {
             out.track = track ? { title: track.title, url: track.url } : null;
             logger.info(`[DIAG] نتيجة البحث: ${track ? 'نجح — ' + track.title : 'فشل/مهلة'}`);
 
-            if (track) {
+            if (!track) {
+                logger.info('[DIAG] تشخيص سبب فشل البحث...');
+                // eslint-disable-next-line @typescript-eslint/no-require-imports
+                const bin = require('youtube-dl-exec').constants.YOUTUBE_DL_PATH as string;
+                const rawSearch = await timeout(
+                    20_000,
+                    new Promise((resolve) => {
+                        const proc = spawn(bin, ['-j', '--socket-timeout', '12', 'scsearch1:Ana Mosh Anany'], {
+                            shell: false
+                        });
+                        let so = '';
+                        let se = '';
+                        proc.stdout.on('data', (d) => (so += d));
+                        proc.stderr.on('data', (d) => (se += d));
+                        proc.on('error', (e) => resolve({ error: e.message }));
+                        proc.on('close', (code) =>
+                            resolve({ code, stdout: so.slice(0, 200), stderr: se.slice(0, 800) })
+                        );
+                    }),
+                    { code: 'timeout' }
+                );
+                out.searchError = rawSearch;
+                logger.info(`[DIAG] تفاصيل فشل البحث: ${JSON.stringify(rawSearch).slice(0, 300)}`);
+
+                const KNOWN_SC = 'https://soundcloud.com/joseph-yossry-862654400/ana-mosh-anany-amr-diab-slowed';
+                logger.info('[DIAG] اختبار الـ resolve على رابط SoundCloud معروف...');
+                const resolved = await timeout(20_000, ytDlpResolve(KNOWN_SC), null);
+                out.resolve = resolved ? { title: resolved.title, url: resolved.url } : null;
+                logger.info(`[DIAG] نتيجة resolve: ${resolved ? 'نجح — ' + resolved.url.slice(0, 80) : 'فشل/مهلة'}`);
+
+                if (resolved) {
+                    const fbin = ffmpegPath || (out.ffmpegResolved as string | undefined) || null;
+                    if (!fbin) {
+                        out.ffmpegTest = { error: 'لا يوجد ffmpeg' };
+                    } else {
+                        logger.info('[DIAG] اختبار تنزيل رابط البث عبر ffmpeg (5 ثوانٍ)...');
+                        out.ffmpegTest = await timeout(
+                            15_000,
+                            new Promise((resolve) => {
+                                const proc = spawn(
+                                    fbin,
+                                    ['-v', 'error', '-i', resolved.url, '-t', '5', '-f', 'null', '-'],
+                                    { shell: false }
+                                );
+                                let err = '';
+                                proc.stderr.on('data', (d) => (err += d));
+                                const timer = setTimeout(() => {
+                                    proc.kill('SIGKILL');
+                                    resolve({ code: 'timeout-5s', stderr: err.slice(0, 400) });
+                                }, 14_000);
+                                proc.on('error', (e) => {
+                                    clearTimeout(timer);
+                                    resolve({ code: 'spawn-error', error: e.message });
+                                });
+                                proc.on('close', (code) => {
+                                    clearTimeout(timer);
+                                    resolve({ code, stderr: err.slice(0, 600) });
+                                });
+                            }),
+                            { code: 'overall-timeout', stderr: '' }
+                        );
+                        logger.info(`[DIAG] اختبار ffmpeg: ${JSON.stringify(out.ffmpegTest).slice(0, 200)}`);
+                    }
+                }
+            } else {
                 const bin = ffmpegPath || (out.ffmpegResolved as string | undefined) || null;
                 if (!bin) {
                     out.ffmpegTest = { error: 'لا يوجد ffmpeg' };
