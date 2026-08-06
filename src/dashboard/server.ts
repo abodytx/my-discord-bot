@@ -19,11 +19,12 @@ import {
     type VoiceChannel,
     type GuildTextBasedChannel
 } from 'discord.js';
-import type { Player } from 'discord-player';
+import { Track, type Player } from 'discord-player';
 
 import { getGuildSettings, updateGuildSettings } from '../utils/settings';
 import { infoEmbed } from '../utils/embeds';
-import { searchMusic } from '../utils/musicSearch';
+import { ytDlpResolve, ytDlpSearch, formatDurationMs } from '../utils/ytdlp';
+import { isYouTubeUrl, hasYouTubeCookie } from '../utils/musicSearch';
 import { hub, getBuffer, emit } from '../modules/liveHub';
 import * as economy from '../modules/economy';
 import { guildBackgroundPath, hasCustomBackground } from '../modules/welcomeCards';
@@ -389,6 +390,7 @@ function buildApp() {
     // ---------- AutoMod ----------
     app.post('/api/settings/automod', requireApiAuth, async (req, res) => {
         const { guildId, badWordsEnabled, mentionLimit, emojiLimit, capsLimit, warnActions } = (req.body ||
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
             {}) as Record<string, any>;
         if (!guildId || !client.guilds.cache.has(guildId)) return res.status(400).json({ error: 'سيرفر غير صالح' });
         await updateGuildSettings(guildId, {
@@ -715,10 +717,28 @@ function buildApp() {
             const textChannel =
                 guild.channels.cache.get(body.textChannel) || guild.channels.cache.find((c) => c.isTextBased());
 
-            const searchResult = await searchMusic(player, body.song, { requestedBy: client.user ?? undefined });
-            if (!(searchResult as { hasTracks: () => boolean }).hasTracks()) throw new Error('لم يتم العثور على نتائج');
+            const song = String(body.song || '').trim();
+            if (!song) throw new Error('الاسم/الرابط فارغ');
 
-            await player.play(vc as VoiceChannel, searchResult as Parameters<Player['play']>[1], {
+            const isYt = isYouTubeUrl(song);
+            if (isYt && !hasYouTubeCookie())
+                throw new Error('يوتيوب محجوب حالياً — استخدم اسم أغنية أو رابط SoundCloud');
+
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
+            const info: any = isYt
+                ? await ytDlpResolve(song)
+                : ((await ytDlpSearch(song, 'soundcloud')) ?? (await ytDlpResolve(song)));
+            if (!info) throw new Error('لم يتم العثور على نتائج');
+
+            const dpTrack = new Track(player, {
+                title: info.title,
+                url: info.url,
+                duration: formatDurationMs(info.durationMs),
+                thumbnail: info.thumbnail || undefined,
+                author: info.author
+            });
+
+            await player.play(vc as VoiceChannel, dpTrack, {
                 nodeOptions: {
                     // eslint-disable-next-line @typescript-eslint/no-explicit-any
                     metadata: { channel: textChannel as any },

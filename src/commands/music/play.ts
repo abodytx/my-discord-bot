@@ -1,20 +1,18 @@
-import { logger } from '../../utils/logger';
 // =====================================================
 // أمر /play - تشغيل أغنية في الروم الصوتي
+// محرك البث: yt-dlp (SoundCloud/YouTube/روابط مباشرة)
 // =====================================================
 
 import { SlashCommandBuilder, PermissionFlagsBits } from 'discord.js';
 import type { ChatInputCommandInteraction, GuildMember } from 'discord.js';
-import type { SearchResult } from 'discord-player';
+import { Track } from 'discord-player';
 import type { CommandModule, ExtendedClient } from '../../types';
 import { errorEmbed, baseEmbed, infoEmbed } from '../../utils/embeds';
-import {
-    searchMusic,
-    searchSoundCloud,
-    hasYouTubeCookie,
-    isYouTubeUrl,
-    YOUTUBE_NEEDS_COOKIE
-} from '../../utils/musicSearch';
+import { logger } from '../../utils/logger';
+import { ytDlpSearch, ytDlpResolve, formatDurationMs, type YtDlpTrack } from '../../utils/ytdlp';
+import { hasYouTubeCookie, isYouTubeUrl } from '../../utils/musicSearch';
+
+const SC_URL = /^https?:\/\/([^/]+\.)?soundcloud\.com\//i;
 
 export default {
     data: new SlashCommandBuilder()
@@ -52,117 +50,112 @@ export default {
 
         await interaction.deferReply();
 
-        try {
-            let searchResult: SearchResult;
-            try {
-                searchResult = (await searchMusic(client.player!, query, {
-                    requestedBy: interaction.user
-                })) as SearchResult;
-            } catch (err) {
-                const e = err as Error & { code?: string };
-                if (e.code === YOUTUBE_NEEDS_COOKIE) {
-                    return interaction.followUp({
-                        embeds: [
-                            infoEmbed(
-                                '⚠️ يوتيوب محجوب حالياً',
-                                `يوتيوب يمنع البث الآلي من هذه البيئة.\nاستخدم **اسم الأغنية** وسيتم البحث على **SoundCloud** بدلاً منه، أو استخدم **رابط SoundCloud** مباشرة.`
-                            )
-                        ]
-                    });
-                }
-                throw e;
-            }
+        const isYtUrl = isYouTubeUrl(query);
+        const isScUrl = SC_URL.test(String(query).trim());
 
-            if (!searchResult.hasTracks()) {
-                return interaction.followUp({
-                    embeds: [errorEmbed('لا توجد نتائج', `لم يتم العثور على أي نتائج لـ "${query}".`)]
-                });
-            }
-
-            const sourceLabel = searchResult.tracks[0]?.source === 'youtube' ? 'يوتيوب' : 'SoundCloud';
-            if (!hasYouTubeCookie()) {
-                await interaction.followUp({
-                    embeds: [
-                        infoEmbed(
-                            '🎧 تم التشغيل عبر SoundCloud',
-                            `يوتيوب محجوب حالياً، تم البحث على **SoundCloud** بدلاً منه.`
-                        )
-                    ]
-                });
-            }
-
-            const playOptions = {
-                nodeOptions: {
-                    metadata: { channel: interaction.channel, requestedBy: interaction.user },
-                    leaveOnEmpty: true,
-                    leaveOnEmptyCooldown: 300_000,
-                    leaveOnEnd: false,
-                    selfDeaf: true
-                }
-            };
-
-            let usedFallback = false;
-            try {
-                await client.player!.play(voiceChannel, searchResult, playOptions);
-            } catch (err) {
-                const e = err as Error;
-                const canFallback = hasYouTubeCookie() && !isYouTubeUrl(query);
-                if (canFallback) {
-                    logger.warn('فشل بث يوتيوب، تحويل تلقائي إلى SoundCloud:', e.message);
-                    client.player!.queues.get(guild.id)?.delete();
-                    const fallback = (await searchSoundCloud(client.player!, query, {
-                        requestedBy: interaction.user
-                    })) as SearchResult;
-                    if (!fallback.hasTracks()) {
-                        return interaction.followUp({
-                            embeds: [
-                                errorEmbed(
-                                    'لا توجد نتائج على SoundCloud',
-                                    `تعذر تشغيل "${query}" حتى بعد التحويل التلقائي.`
-                                )
-                            ]
-                        });
-                    }
-                    await client.player!.play(voiceChannel, fallback, playOptions);
-                    usedFallback = true;
-                } else {
-                    const hint =
-                        e.message.toLowerCase().includes('sign in') || e.message.includes('login')
-                            ? '\n\n> 💡 **السبب الشائع:** يوتيوب يحجب البث الآلي. استخدم اسم الأغنية وسيتم البحث على SoundCloud تلقائياً.'
-                            : '';
-                    return interaction.followUp({
-                        embeds: [errorEmbed('تعذر التشغيل', `حدث خطأ: ${e.message}${hint}`)]
-                    });
-                }
-            }
-
-            if (usedFallback) {
-                await interaction.followUp({
-                    embeds: [
-                        infoEmbed(
-                            '🎧 تشغيل عبر SoundCloud',
-                            'فشل بث يوتيوب (محجوب غالباً)، تم التحويل تلقائياً إلى **SoundCloud**.'
-                        )
-                    ]
-                });
-            } else if (hasYouTubeCookie()) {
-                await interaction.followUp({
-                    embeds: [
-                        baseEmbed()
-                            .setTitle('🎵 تمت الإضافة')
-                            .setDescription(
-                                `تمت إضافة **${searchResult.tracks.length}** مقطع إلى القائمة عبر ${sourceLabel}.`
-                            )
-                            .setFooter({ text: 'جارٍ التشغيل...' })
-                    ]
-                });
-            }
-        } catch (err) {
-            const e = err as Error;
-            logger.error('Play error:', err);
-            await interaction.followUp({
-                embeds: [errorEmbed('تعذر التشغيل', `حدث خطأ: ${e.message}`)]
+        // يوتيوب محجوب وبدون كوكيز صالحة → رسالة واضحة
+        if (isYtUrl && !hasYouTubeCookie()) {
+            return interaction.followUp({
+                embeds: [
+                    infoEmbed(
+                        '⚠️ يوتيوب محجوب حالياً',
+                        `يوتيوب يمنع البث الآلي من هذه البيئة.\nاستخدم **اسم الأغنية** وسيتم البحث على **SoundCloud** بدلاً منه، أو استخدم **رابط SoundCloud** مباشرة.`
+                    )
+                ]
             });
         }
+
+        let track: YtDlpTrack | null = null;
+        let sourceLabel = '';
+        let attemptedYt = false;
+
+        try {
+            if (isYtUrl) {
+                track = await ytDlpResolve(query);
+                sourceLabel = 'يوتيوب';
+            } else if (isScUrl) {
+                track = await ytDlpResolve(query);
+                sourceLabel = 'SoundCloud';
+            } else {
+                if (hasYouTubeCookie()) {
+                    attemptedYt = true;
+                    track = await ytDlpSearch(query, 'youtube');
+                    sourceLabel = 'يوتيوب';
+                }
+                if (!track) {
+                    track = await ytDlpSearch(query, 'soundcloud');
+                    sourceLabel = 'SoundCloud';
+                }
+            }
+        } catch (err) {
+            logger.error('خطأ في البحث:', err);
+            return interaction.followUp({
+                embeds: [errorEmbed('تعذر البحث', `حدث خطأ: ${(err as Error).message}`)]
+            });
+        }
+
+        if (!track) {
+            return interaction.followUp({
+                embeds: [
+                    errorEmbed('لا توجد نتائج', `لم يتم العثور على "${query}". جرّب صياغة أخرى أو رابطاً مباشراً.`)
+                ]
+            });
+        }
+
+        if (attemptedYt && sourceLabel === 'SoundCloud' && hasYouTubeCookie()) {
+            await interaction.followUp({
+                embeds: [
+                    infoEmbed('🎧 تشغيل عبر SoundCloud', 'تعذر بث يوتيوب، تم التحويل تلقائياً إلى **SoundCloud**.')
+                ]
+            });
+        } else if (sourceLabel === 'SoundCloud') {
+            await interaction.followUp({
+                embeds: [
+                    infoEmbed(
+                        '🎧 تم التشغيل عبر SoundCloud',
+                        'يوتيوب محجوب حالياً، تم البحث على **SoundCloud** بدلاً منه.'
+                    )
+                ]
+            });
+        }
+
+        const trackData = {
+            title: track.title,
+            url: track.url,
+            duration: formatDurationMs(track.durationMs),
+            thumbnail: track.thumbnail || undefined,
+            author: track.author
+        };
+
+        const playOptions = {
+            nodeOptions: {
+                metadata: { channel: interaction.channel, requestedBy: interaction.user },
+                leaveOnEmpty: true,
+                leaveOnEmptyCooldown: 300_000,
+                leaveOnEnd: false,
+                selfDeaf: true
+            }
+        };
+
+        try {
+            const dpTrack = new Track(client.player!, trackData);
+            await client.player!.play(voiceChannel, dpTrack, playOptions);
+        } catch (err) {
+            const e = err as Error;
+            return interaction.followUp({
+                embeds: [
+                    errorEmbed('تعذر التشغيل', `حدث خطأ: ${e.message}\n\n> 💡 جرّب مرة أخرى، أو استخدم رابطاً مباشراً.`)
+                ]
+            });
+        }
+
+        await interaction.followUp({
+            embeds: [
+                baseEmbed()
+                    .setTitle('🎵 تمت الإضافة')
+                    .setDescription(`**${track.title}**\nبواسطة **${track.author}** عبر ${sourceLabel}.`)
+                    .setFooter({ text: 'جارٍ التشغيل...' })
+            ]
+        });
     }
 } satisfies CommandModule;

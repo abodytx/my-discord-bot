@@ -14,8 +14,7 @@ import * as fs from 'fs';
 import * as path from 'path';
 import { Client, GatewayIntentBits, Partials, Collection, type ClientEvents } from 'discord.js';
 import { Player, type GuildQueue, type Track } from 'discord-player';
-import { DefaultExtractors } from '@discord-player/extractor';
-import { YoutubeExtractor } from 'discord-player-youtube';
+import { DirectUrlExtractor } from './extractors/directUrl';
 
 import { safe, install as installCrashGuard } from './modules/crashGuard';
 import { emit } from './modules/liveHub';
@@ -24,7 +23,6 @@ import { createDashboard } from './dashboard/server';
 import { nowPlayingEmbed, controlRow } from './utils/musicUI';
 import { infoEmbed, errorEmbed } from './utils/embeds';
 import { sanitize } from './utils/logger';
-import { setYouTubeCookieValid, validateYouTubeCookie, hasYouTubeCookie } from './utils/musicSearch';
 import { initStore } from './storage';
 import { restoreGiveaways } from './modules/giveaway';
 import type { CommandModule, EventModule, ExtendedClient } from './types';
@@ -63,38 +61,11 @@ const player = new Player(client);
 client.player = player;
 
 async function setupExtractors(): Promise<void> {
-    // تحقق من صلاحية كوكيز يوتيوب مرة واحدة عند الإقلاع.
-    // إذا كانت مرفوضة (يوتيوب يحجب البث غالباً مؤخراً) نُفعّل SoundCloud مباشرة.
-    if (process.env.YOUTUBE_COOKIE && process.env.YOUTUBE_COOKIE.trim()) {
-        const valid = await validateYouTubeCookie();
-        setYouTubeCookieValid(valid);
-        if (valid) {
-            logger.info('✅ كوكيز يوتيوب صالحة — تم تفعيل البث عبر يوتيوب.');
-        } else {
-            logger.warn('⚠️ كوكيز يوتيوب مرفوضة من يوتيوب — سيتم البحث عبر SoundCloud للأغاني.');
-        }
-    }
-
-    // ملاحظة: تسجيل الـ extractors الافتراضية (SoundCloud...) أولاً
-    // حتى لا يلوث YoutubeExtractor نتائج البحث (سبق إصلاحه)
-    for (const ext of DefaultExtractors) {
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        await (player.extractors.register as any)(ext);
-    }
-
-    // تسجيل يوتيوب فقط عند توفر كوكيز صالحة، لأن الإنشاط ينشئ كائن Innertube
-    // ضخم (يستهلك ذاكرة كبيرة على الخطة المجانية) حتى لو كان يوتيوب محجوباً.
-    if (hasYouTubeCookie()) {
-        await player.extractors.register(YoutubeExtractor, {
-            cookie: process.env.YOUTUBE_COOKIE || undefined,
-            disableYTJSLog: true
-            // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        } as any);
-        logger.info('🎵 تم تفعيل محرك يوتيوب.');
-    } else {
-        logger.info('🎵 يوتيوب معطّل (محجوب) — تم توفير الذاكرة، SoundCloud هو المصدر.');
-    }
-    logger.info('🎵 تم تحميل محركات الموسيقى بنجاح');
+    // تسجيل extractor الروابط المباشرة فقط: كل البث يتم عبر yt-dlp
+    // (رابط مباشر يولّده yt-dlp ثم يبثه ffmpeg) — بدون extractor يوتيوب
+    // الضخم الذي كان يستهلك مئات الميغابايت.
+    await player.extractors.register(DirectUrlExtractor, {});
+    logger.info('🎵 محرك الموسيقى جاهز (yt-dlp).');
 }
 
 player.events.on('playerStart', (queue: GuildQueue, track: Track) => {
@@ -145,6 +116,32 @@ player.events.on('error', (queue: GuildQueue, error: Error) => {
 player.events.on('playerError', (queue: GuildQueue, error: Error) => {
     logger.error('🎵 خطأ أثناء تشغيل مقطع:', error.message);
     notifyPlaybackError(queue, error);
+});
+
+// =====================================================
+// تشخيص تفصيلي لحالات البث (يُطبع في اللوج عند أي مؤشر فشل/انقطاع)
+// =====================================================
+player.events.on('debug', (_queue: GuildQueue, message: string) => {
+    const m = String(message || '');
+    if (
+        /error|fail|cannot|unable|idle|interrupt|terminate|destroy|unreachable|no (audio|voice)|unexpected|refused|abort|timed? ?out|ECONN|ENOTFOUND|ETIMEDOUT|sign in|login|connection/i.test(
+            m
+        )
+    ) {
+        logger.info(`[DP-DEBUG] ${sanitize(m)}`);
+    }
+});
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+(player.events as any).on('connectionCreate', (connection: any) => {
+    logger.info(`[DP-VOICE] تم إنشاء اتصال صوتي (state: ${String(connection?.state?.status)})`);
+});
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+(player.events as any).on('connectionError', (error: any) => {
+    logger.error(`[DP-VOICE] خطأ اتصال صوتي: ${sanitize(String(error?.message || error))}`);
+});
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+(player.events as any).on('playerFinish', (track: any) => {
+    logger.info(`[DP-PLAY] انتهى المقطع: ${sanitize(String(track?.title || ''))}`);
 });
 
 // =====================================================
