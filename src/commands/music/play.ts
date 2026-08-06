@@ -5,7 +5,7 @@
 
 import { SlashCommandBuilder, PermissionFlagsBits } from 'discord.js';
 import type { ChatInputCommandInteraction, GuildMember } from 'discord.js';
-import { Track } from 'discord-player';
+import { Track, type RawTrackData } from 'discord-player';
 import type { CommandModule, ExtendedClient } from '../../types';
 import { errorEmbed, baseEmbed, infoEmbed } from '../../utils/embeds';
 import { logger } from '../../utils/logger';
@@ -124,8 +124,9 @@ export default {
             url: track.url,
             duration: formatDurationMs(track.durationMs),
             thumbnail: track.thumbnail || undefined,
-            author: track.author
-        };
+            author: track.author,
+            source: sourceLabel === 'يوتيوب' ? 'youtube' : 'soundcloud'
+        } as RawTrackData;
 
         const playOptions = {
             nodeOptions: {

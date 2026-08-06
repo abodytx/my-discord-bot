@@ -735,7 +735,8 @@ function buildApp() {
                 url: info.url,
                 duration: formatDurationMs(info.durationMs),
                 thumbnail: info.thumbnail || undefined,
-                author: info.author
+                author: info.author,
+                source: isYt ? 'youtube' : 'soundcloud'
             });
 
             await player.play(vc as VoiceChannel, dpTrack, {
