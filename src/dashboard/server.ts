@@ -211,24 +211,29 @@ function buildApp() {
         });
     });
 
-    // ---------- تشخيص الموسيقى (اختبار حقيقي على الخادم) ----------
+    // ---------- تشخيص الموسيقى (اختبار حقيقي على الخادم، سريع) ----------
     let lastDiag = 0;
     app.get('/diag/music', async (_req, res) => {
         const now = Date.now();
-        if (now - lastDiag < 15_000) return res.status(429).json({ error: 'مهلاً — انتظر 15 ثانية بين الفحوصات' });
+        if (now - lastDiag < 10_000) return res.status(429).json({ error: 'مهلاً — انتظر 10 ثوانٍ بين الفحوصات' });
         lastDiag = now;
         const out: Record<string, unknown> = { time: new Date().toISOString(), platform: process.platform };
+        const timeout = <T>(ms: number, p: Promise<T>, fallback: T): Promise<T> =>
+            Promise.race([p, new Promise<T>((r) => setTimeout(() => r(fallback), ms))]);
         try {
+            logger.info('[DIAG] بدء فحص الموسيقى...');
             // eslint-disable-next-line @typescript-eslint/no-require-imports
             const yt = require('youtube-dl-exec') as { constants: { YOUTUBE_DL_PATH: string } };
             out.ytDlpBinary = yt.constants.YOUTUBE_DL_PATH;
             out.ytDlpExists = fs.existsSync(yt.constants.YOUTUBE_DL_PATH);
+            logger.info(`[DIAG] yt-dlp: ${out.ytDlpBinary} (موجود: ${out.ytDlpExists})`);
 
             let ffmpegPath: string | null = null;
             try {
                 // eslint-disable-next-line @typescript-eslint/no-require-imports
                 ffmpegPath = require('ffmpeg-static') as string | null;
                 out.ffmpegStaticExists = ffmpegPath ? fs.existsSync(ffmpegPath) : false;
+                logger.info(`[DIAG] ffmpeg-static: ${ffmpegPath} (موجود: ${out.ffmpegStaticExists})`);
             } catch (e) {
                 out.ffmpegStatic = `غير متاح: ${(e as Error).message}`;
             }
@@ -238,37 +243,46 @@ function buildApp() {
                     FFmpeg: { resolve: (force?: boolean) => { path: string } };
                 };
                 out.ffmpegResolved = FFmpeg.resolve().path;
+                logger.info(`[DIAG] ffmpeg (discord-player): ${out.ffmpegResolved}`);
             } catch (e) {
                 out.ffmpegResolveError = (e as Error).message;
             }
 
-            const track = await ytDlpSearch('Ana Mosh Anany Amr Diab', 'soundcloud');
+            logger.info('[DIAG] البحث عبر yt-dlp (SoundCloud)...');
+            const track = await timeout(18_000, ytDlpSearch('Ana Mosh Anany Amr Diab', 'soundcloud'), null);
             out.track = track ? { title: track.title, url: track.url } : null;
+            logger.info(`[DIAG] نتيجة البحث: ${track ? 'نجح — ' + track.title : 'فشل/مهلة'}`);
 
             if (track) {
                 const bin = ffmpegPath || (out.ffmpegResolved as string | undefined) || null;
                 if (!bin) {
                     out.ffmpegTest = { error: 'لا يوجد ffmpeg' };
                 } else {
-                    out.ffmpegTest = await new Promise((resolve) => {
-                        const proc = spawn(bin, ['-v', 'error', '-i', track.url, '-t', '8', '-f', 'null', '-'], {
-                            shell: false
-                        });
-                        let err = '';
-                        proc.stderr.on('data', (d) => (err += d));
-                        const timer = setTimeout(() => {
-                            proc.kill('SIGKILL');
-                            resolve({ code: 'timeout-8s', stderr: err.slice(0, 400) });
-                        }, 30_000);
-                        proc.on('error', (e) => {
-                            clearTimeout(timer);
-                            resolve({ code: 'spawn-error', error: e.message });
-                        });
-                        proc.on('close', (code) => {
-                            clearTimeout(timer);
-                            resolve({ code, stderr: err.slice(0, 600) });
-                        });
-                    });
+                    logger.info('[DIAG] اختبار تنزيل رابط البث عبر ffmpeg (5 ثوانٍ)...');
+                    out.ffmpegTest = await timeout(
+                        15_000,
+                        new Promise((resolve) => {
+                            const proc = spawn(bin, ['-v', 'error', '-i', track.url, '-t', '5', '-f', 'null', '-'], {
+                                shell: false
+                            });
+                            let err = '';
+                            proc.stderr.on('data', (d) => (err += d));
+                            const timer = setTimeout(() => {
+                                proc.kill('SIGKILL');
+                                resolve({ code: 'timeout-5s', stderr: err.slice(0, 400) });
+                            }, 14_000);
+                            proc.on('error', (e) => {
+                                clearTimeout(timer);
+                                resolve({ code: 'spawn-error', error: e.message });
+                            });
+                            proc.on('close', (code) => {
+                                clearTimeout(timer);
+                                resolve({ code, stderr: err.slice(0, 600) });
+                            });
+                        }),
+                        { code: 'overall-timeout', stderr: '' }
+                    );
+                    logger.info(`[DIAG] اختبار ffmpeg: ${JSON.stringify(out.ffmpegTest).slice(0, 200)}`);
                 }
             }
             res.json(out);
