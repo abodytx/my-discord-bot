@@ -10,6 +10,7 @@ import * as fs from 'fs';
 import * as path from 'path';
 import * as crypto from 'crypto';
 import * as os from 'os';
+import { spawn } from 'child_process';
 import express, { type Request, type Response, type NextFunction } from 'express';
 import {
     ActivityType,
@@ -208,6 +209,72 @@ function buildApp() {
             uptime: Math.floor(process.uptime()),
             guilds: client.guilds.cache.size
         });
+    });
+
+    // ---------- تشخيص الموسيقى (اختبار حقيقي على الخادم) ----------
+    let lastDiag = 0;
+    app.get('/diag/music', async (_req, res) => {
+        const now = Date.now();
+        if (now - lastDiag < 15_000) return res.status(429).json({ error: 'مهلاً — انتظر 15 ثانية بين الفحوصات' });
+        lastDiag = now;
+        const out: Record<string, unknown> = { time: new Date().toISOString(), platform: process.platform };
+        try {
+            // eslint-disable-next-line @typescript-eslint/no-require-imports
+            const yt = require('youtube-dl-exec') as { constants: { YOUTUBE_DL_PATH: string } };
+            out.ytDlpBinary = yt.constants.YOUTUBE_DL_PATH;
+            out.ytDlpExists = fs.existsSync(yt.constants.YOUTUBE_DL_PATH);
+
+            let ffmpegPath: string | null = null;
+            try {
+                // eslint-disable-next-line @typescript-eslint/no-require-imports
+                ffmpegPath = require('ffmpeg-static') as string | null;
+                out.ffmpegStaticExists = ffmpegPath ? fs.existsSync(ffmpegPath) : false;
+            } catch (e) {
+                out.ffmpegStatic = `غير متاح: ${(e as Error).message}`;
+            }
+            try {
+                // eslint-disable-next-line @typescript-eslint/no-require-imports
+                const { FFmpeg } = require('@discord-player/ffmpeg') as {
+                    FFmpeg: { resolve: (force?: boolean) => { path: string } };
+                };
+                out.ffmpegResolved = FFmpeg.resolve().path;
+            } catch (e) {
+                out.ffmpegResolveError = (e as Error).message;
+            }
+
+            const track = await ytDlpSearch('Ana Mosh Anany Amr Diab', 'soundcloud');
+            out.track = track ? { title: track.title, url: track.url } : null;
+
+            if (track) {
+                const bin = ffmpegPath || (out.ffmpegResolved as string | undefined) || null;
+                if (!bin) {
+                    out.ffmpegTest = { error: 'لا يوجد ffmpeg' };
+                } else {
+                    out.ffmpegTest = await new Promise((resolve) => {
+                        const proc = spawn(bin, ['-v', 'error', '-i', track.url, '-t', '8', '-f', 'null', '-'], {
+                            shell: false
+                        });
+                        let err = '';
+                        proc.stderr.on('data', (d) => (err += d));
+                        const timer = setTimeout(() => {
+                            proc.kill('SIGKILL');
+                            resolve({ code: 'timeout-8s', stderr: err.slice(0, 400) });
+                        }, 30_000);
+                        proc.on('error', (e) => {
+                            clearTimeout(timer);
+                            resolve({ code: 'spawn-error', error: e.message });
+                        });
+                        proc.on('close', (code) => {
+                            clearTimeout(timer);
+                            resolve({ code, stderr: err.slice(0, 600) });
+                        });
+                    });
+                }
+            }
+            res.json(out);
+        } catch (e) {
+            res.status(500).json({ error: (e as Error).message });
+        }
     });
 
     // ---------- SSE Live ----------
