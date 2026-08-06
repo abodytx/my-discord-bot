@@ -203,6 +203,7 @@ function buildApp() {
     app.get('/healthz', (_req, res) => {
         res.json({
             status: 'ok',
+            engine: 'ytdlp',
             bot: Boolean(client.readyAt),
             uptime: Math.floor(process.uptime()),
             guilds: client.guilds.cache.size
