@@ -115,7 +115,7 @@ export async function ytDlpSearch(query: string, source: 'soundcloud' | 'youtube
     if (!raw) return null;
     let cookieFile: string | null = null;
     try {
-        const args: string[] = ['-j', '--no-playlist', '--no-warnings', '--socket-timeout', '20'];
+        const args: string[] = ['-j', '--no-playlist', '--no-warnings', '--force-ipv4', '--socket-timeout', '20'];
         cookieFile = buildCookieFile();
         if (cookieFile) args.push('--cookies', cookieFile);
         args.push(prefix + raw);
@@ -139,7 +139,7 @@ export async function ytDlpResolve(input: string): Promise<YtDlpTrack | null> {
     if (!raw) return null;
     let cookieFile: string | null = null;
     try {
-        const args: string[] = ['-j', '--no-playlist', '--no-warnings', '--socket-timeout', '20'];
+        const args: string[] = ['-j', '--no-playlist', '--no-warnings', '--force-ipv4', '--socket-timeout', '20'];
         cookieFile = buildCookieFile();
         if (cookieFile) args.push('--cookies', cookieFile);
         args.push(raw);

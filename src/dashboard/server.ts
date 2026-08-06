@@ -248,6 +248,38 @@ function buildApp() {
                 out.ffmpegResolveError = (e as Error).message;
             }
 
+            logger.info('[DIAG] فحص الاتصال العام بالإنترنت عبر IPv4 (facebook.com)...');
+            const t0 = Date.now();
+            const egress = await timeout(
+                12_000,
+                new Promise((resolve) => {
+                    // eslint-disable-next-line @typescript-eslint/no-require-imports
+                    const https = require('https');
+                    const req = https.get(
+                        {
+                            host: 'www.google.com',
+                            path: '/',
+                            family: 4,
+                            timeout: 10_000,
+                            headers: { 'user-agent': 'diagnostic' }
+                        },
+                        (r: { statusCode?: number; resume: () => void }) => {
+                            r.resume();
+                            resolve({ code: r.statusCode ?? 'unknown' });
+                        }
+                    );
+                    req.on('timeout', () => {
+                        req.destroy();
+                        resolve({ code: 'timeout' });
+                    });
+                    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+                    req.on('error', (e: any) => resolve({ code: 'error', error: String(e?.message || e) }));
+                }),
+                { code: 'overall-timeout' }
+            );
+            out.egress = { ms: Date.now() - t0, result: egress };
+            logger.info(`[DIAG] اتصال عام IPv4: ${JSON.stringify(out.egress)}`);
+
             logger.info('[DIAG] البحث عبر yt-dlp (SoundCloud)...');
             const track = await timeout(18_000, ytDlpSearch('Ana Mosh Anany Amr Diab', 'soundcloud'), null);
             out.track = track ? { title: track.title, url: track.url } : null;
@@ -258,11 +290,13 @@ function buildApp() {
                 // eslint-disable-next-line @typescript-eslint/no-require-imports
                 const bin = require('youtube-dl-exec').constants.YOUTUBE_DL_PATH as string;
                 const rawSearch = await timeout(
-                    20_000,
+                    25_000,
                     new Promise((resolve) => {
-                        const proc = spawn(bin, ['-j', '--socket-timeout', '12', 'scsearch1:Ana Mosh Anany'], {
-                            shell: false
-                        });
+                        const proc = spawn(
+                            bin,
+                            ['-j', '--force-ipv4', '--socket-timeout', '15', 'scsearch1:Ana Mosh Anany'],
+                            { shell: false }
+                        );
                         let so = '';
                         let se = '';
                         proc.stdout.on('data', (d) => (so += d));
@@ -279,7 +313,7 @@ function buildApp() {
 
                 const KNOWN_SC = 'https://soundcloud.com/joseph-yossry-862654400/ana-mosh-anany-amr-diab-slowed';
                 logger.info('[DIAG] اختبار الـ resolve على رابط SoundCloud معروف...');
-                const resolved = await timeout(20_000, ytDlpResolve(KNOWN_SC), null);
+                const resolved = await timeout(25_000, ytDlpResolve(KNOWN_SC), null);
                 out.resolve = resolved ? { title: resolved.title, url: resolved.url } : null;
                 logger.info(`[DIAG] نتيجة resolve: ${resolved ? 'نجح — ' + resolved.url.slice(0, 80) : 'فشل/مهلة'}`);
 
