@@ -1,3 +1,4 @@
+import { logger, modActionLog } from '../../utils/logger';
 // =====================================================
 // أمر /unlock - فتح القناة بعد قفلها
 // =====================================================
@@ -32,8 +33,12 @@ export default {
             await interaction.reply({
                 embeds: [successEmbed('🔓 تم فتح القناة', `تم فتح ${channel} للسماح بالإرسال.`)]
             });
+            await modActionLog(interaction.guild, 'unlock', {
+                detail: `🔓 القناة: ${channel.name}`,
+                moderator: interaction.user.tag
+            });
         } catch (err) {
-            console.error(err);
+            logger.error(err);
             await interaction.reply({
                 embeds: [errorEmbed('فشلت العملية', 'تعذر فتح القناة. تأكد من صلاحيات البوت.')],
                 ephemeral: true

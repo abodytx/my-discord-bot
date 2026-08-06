@@ -1,0 +1,16 @@
+node_modules/
+dist/
+coverage/
+.git/
+.gitignore
+.env
+.env.local
+.env.*
+config.json
+data/
+logs/
+*.log
+tests/
+.git
+.github/
+.husky/

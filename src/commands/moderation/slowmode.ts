@@ -1,3 +1,4 @@
+import { logger, modActionLog } from '../../utils/logger';
 // =====================================================
 // أمر /slowmode - ضبط الوضع البطيء للقناة
 // =====================================================
@@ -46,8 +47,12 @@ export default {
                     )
                 ]
             });
+            await modActionLog(interaction.guild, 'slowmode', {
+                detail: `🐢 القناة: ${channel.name} — ${seconds === 0 ? 'إيقاف' : `${seconds} ثانية`}`,
+                moderator: interaction.user.tag
+            });
         } catch (err) {
-            console.error(err);
+            logger.error(err);
             await interaction.reply({
                 embeds: [errorEmbed('فشلت العملية', 'تعذر ضبط الوضع البطيء.')],
                 ephemeral: true

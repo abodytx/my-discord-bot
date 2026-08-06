@@ -1,3 +1,4 @@
+import { logger } from '../utils/logger';
 // =====================================================
 // Crash Guard - منع توقف البوت نهائياً
 // يلف تنفيذ الأوامر والأحداث بـ try/catch ويرصد الأخطاء
@@ -15,8 +16,8 @@ export function safe<T extends (...args: any[]) => Promise<unknown> | unknown>(f
             return await fn(...args);
         } catch (err) {
             const message = err instanceof Error ? err.message : String(err);
-            console.error('⚠️ [CrashGuard] خطأ محتوى:');
-            console.error(err);
+            logger.error('⚠️ [CrashGuard] خطأ محتوى:');
+            logger.error(err);
             log.error(`[CrashGuard] خطأ محتوى: ${sanitize(message)}`);
             emit('log', { level: 'error', source: 'module', message: `خطأ محتوى: ${sanitize(message)}` });
             return undefined;
@@ -28,23 +29,23 @@ export function safe<T extends (...args: any[]) => Promise<unknown> | unknown>(f
 export function install(): void {
     process.on('unhandledRejection', (reason: unknown) => {
         const message = reason instanceof Error ? reason.message : String(reason);
-        console.error('⚠️ [CrashGuard] Unhandled Rejection:');
-        console.error(reason);
+        logger.error('⚠️ [CrashGuard] Unhandled Rejection:');
+        logger.error(reason);
         log.error(`[CrashGuard] Unhandled Rejection: ${sanitize(message)}`);
         emit('log', { level: 'error', source: 'process', message: `Unhandled Rejection: ${sanitize(message)}` });
     });
 
     process.on('uncaughtException', (err: Error) => {
-        console.error('💥 [CrashGuard] Uncaught Exception — البوت مستمر بالعمل:');
-        console.error(err);
+        logger.error('💥 [CrashGuard] Uncaught Exception — البوت مستمر بالعمل:');
+        logger.error(err);
         log.error(`[CrashGuard] Uncaught Exception: ${sanitize(err.message)}`);
         emit('log', { level: 'error', source: 'process', message: `Uncaught Exception: ${sanitize(err.message)}` });
     });
 
     process.on('warning', (warning: Error) => {
         if (warning.name === 'DeprecationWarning') return;
-        console.warn('⚠️', warning.message);
+        logger.warn('⚠️', warning.message);
     });
 
-    console.log('🛡️ [CrashGuard] تم تفعيل الحماية من الأعطال.');
+    logger.info('🛡️ [CrashGuard] تم تفعيل الحماية من الأعطال.');
 }

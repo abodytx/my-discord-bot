@@ -1,3 +1,4 @@
+import { logger } from '../utils/logger';
 // =====================================================
 // حدث "guildMemberRemove": رسالة وداع + لوق مغادرة
 // =====================================================
@@ -61,7 +62,7 @@ export default {
                     await goodbyeChannel.send({ embeds: [goodbyeEmbed] });
                 }
             } catch (err) {
-                console.error('خطأ في إرسال رسالة الوداع:', err);
+                logger.error('خطأ في إرسال رسالة الوداع:', err);
             }
         }
 

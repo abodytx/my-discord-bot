@@ -1,3 +1,4 @@
+import { logger } from '../utils/logger';
 // =====================================================
 // تنفيذ التخزين على ملفات JSON (التوافق مع البيانات القديمة)
 // يُستخدم تلقائياً عند غياب DB_URI، أو كاحتياطي تطوير
@@ -28,7 +29,7 @@ function writeJson(file: string, data: unknown): void {
     try {
         fs.writeFileSync(file, JSON.stringify(data, null, 2));
     } catch (err) {
-        console.error('خطأ في حفظ ملف البيانات:', err);
+        logger.error('خطأ في حفظ ملف البيانات:', err);
     }
 }
 

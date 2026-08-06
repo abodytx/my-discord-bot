@@ -137,6 +137,18 @@ async function onGuildChange() {
     $('pgMaxActions').value = s.maxNukeActions || 3;
     $('levelEnabled').checked = Boolean(s.levelSystem);
 
+    // AutoMod
+    $('amBadWordsEnabled').checked = Boolean(s.badWordsEnabled);
+    $('amMentionLimit').value = s.mentionLimit ?? 5;
+    $('amEmojiLimit').value = s.emojiLimit ?? 10;
+    $('amCapsLimit').value = s.capsLimit ?? 0;
+    const act = Array.isArray(s.warnActions) ? s.warnActions[0] : null;
+    $('amWarnPoints').value = act?.points ?? 0;
+    $('amWarnAction').value = act?.action ?? 'timeout';
+    $('amWarnDuration').value = act?.durationMin ?? 60;
+    renderAutoWords(s.badWords || []);
+    $('botLocale').value = s.locale === 'en' ? 'en' : 'ar';
+
     loadWhitelist();
     loadBackgroundStatus();
     loadEconomy();
@@ -420,6 +432,60 @@ async function setEconomy(userId) {
   } catch (e) { toast(e.message, false); }
 }
 
+// ===================== AutoMod =====================
+function renderAutoWords(words) {
+  $('amWordsBox').innerHTML = words.length
+    ? words.map(w => `<span class="chip">🗨️ ${esc(w)} <button onclick="removeAutoWord('${esc(w)}')">✕</button></span>`).join(' ')
+    : 'لا توجد كلمات محظورة.';
+}
+
+async function addAutoWord() {
+  const word = $('amNewWord').value.trim();
+  if (!word) return toast('اكتب الكلمة أولاً', false);
+  try {
+    const r = await api('/api/settings/automod/words', { method: 'POST', body: JSON.stringify({ guildId: state.guildId, word }) });
+    $('amNewWord').value = '';
+    renderAutoWords(r.list);
+    toast('أُضيفت الكلمة ✅');
+  } catch (e) { toast(e.message, false); }
+}
+
+async function removeAutoWord(word) {
+  try {
+    const r = await api('/api/settings/automod/words', { method: 'POST', body: JSON.stringify({ guildId: state.guildId, word, remove: true }) });
+    renderAutoWords(r.list);
+    toast('أُزيلت الكلمة');
+  } catch (e) { toast(e.message, false); }
+}
+
+async function saveAutoMod() {
+  const points = parseInt($('amWarnPoints').value) || 0;
+  const action = $('amWarnAction').value;
+  const warnActions = points > 0 ? [{ points, action, durationMin: parseInt($('amWarnDuration').value) || 60 }] : [];
+  try {
+    await api('/api/settings/automod', {
+      method: 'POST',
+      body: JSON.stringify({
+        guildId: state.guildId,
+        badWordsEnabled: $('amBadWordsEnabled').checked,
+        mentionLimit: $('amMentionLimit').value,
+        emojiLimit: $('amEmojiLimit').value,
+        capsLimit: $('amCapsLimit').value,
+        warnActions
+      })
+    });
+    toast('تم حفظ إعدادات AutoMod ✅');
+  } catch (e) { toast(e.message, false); }
+}
+
+// ===================== اللغة =====================
+async function saveLocale() {
+  try {
+    await api('/api/settings/locale', { method: 'POST', body: JSON.stringify({ guildId: state.guildId, locale: $('botLocale').value }) });
+    toast('تم حفظ اللغة ✅');
+  } catch (e) { toast(e.message, false); }
+}
+
 // ===================== الإدارة =====================
 async function loadMembers() {
   const body = $('membersBody');
@@ -580,3 +646,7 @@ window.setEconomy = setEconomy;
 window.modAction = modAction;
 window.addWhitelist = addWhitelist;
 window.removeWhitelist = removeWhitelist;
+window.addAutoWord = addAutoWord;
+window.removeAutoWord = removeAutoWord;
+window.saveAutoMod = saveAutoMod;
+window.saveLocale = saveLocale;

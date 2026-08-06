@@ -29,7 +29,8 @@ export const DEFAULT_SETTINGS: GuildSettings = {
     mentionLimit: 5,
     emojiLimit: 10,
     capsLimit: 0,
-    warnActions: []
+    warnActions: [],
+    locale: 'ar'
 };
 
 export function mergeSettings(base: GuildSettings, partial: Partial<GuildSettings>): GuildSettings {

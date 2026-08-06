@@ -1,3 +1,4 @@
+import { logger } from '../utils/logger';
 // =====================================================
 // Dashboard Server - لوحة التحكم السحابية Enterprise
 // - مصادقة بالكوكيز + SSE Live (metrics + live console)
@@ -126,7 +127,7 @@ function buildApp() {
         .digest('hex');
 
     if (!process.env.DASHBOARD_PASSWORD) {
-        console.warn('⚠️ لم يتم ضبط DASHBOARD_PASSWORD — تم استخدام الافتراضي "admin". غيّرها في .env!');
+        logger.warn('⚠️ لم يتم ضبط DASHBOARD_PASSWORD — تم استخدام الافتراضي "admin". غيّرها في .env!');
     }
 
     app.use(express.urlencoded({ extended: true }));
@@ -279,7 +280,12 @@ function buildApp() {
             banner: guild.bannerURL({ size: 256 }),
             memberCount: guild.memberCount,
             channels: guild.channels.cache
-                .filter((c) => c.type === ChannelType.GuildText || c.type === ChannelType.GuildVoice)
+                .filter(
+                    (c) =>
+                        c.type === ChannelType.GuildText ||
+                        c.type === ChannelType.GuildVoice ||
+                        c.type === ChannelType.GuildCategory
+                )
                 .map((c) => ({ id: c.id, name: c.name, type: c.type })),
             roles: guild.roles.cache.map((r) => ({ id: r.id, name: r.name })),
             settings,
@@ -378,6 +384,53 @@ function buildApp() {
         const list = (Array.isArray(settings[key]) ? (settings[key] as string[]) : []).filter((x) => x !== String(id));
         await updateGuildSettings(guildId, { [key]: list });
         res.json({ ok: true, list });
+    });
+
+    // ---------- AutoMod ----------
+    app.post('/api/settings/automod', requireApiAuth, async (req, res) => {
+        const { guildId, badWordsEnabled, mentionLimit, emojiLimit, capsLimit, warnActions } = (req.body ||
+            {}) as Record<string, any>;
+        if (!guildId || !client.guilds.cache.has(guildId)) return res.status(400).json({ error: 'سيرفر غير صالح' });
+        await updateGuildSettings(guildId, {
+            badWordsEnabled: badWordsEnabled === 'true' || badWordsEnabled === true,
+            mentionLimit: Math.max(0, parseInt(mentionLimit) || 0),
+            emojiLimit: Math.max(0, parseInt(emojiLimit) || 0),
+            capsLimit: Math.max(0, parseInt(capsLimit) || 0),
+            warnActions: Array.isArray(warnActions) ? warnActions : []
+        });
+        emit('log', {
+            level: 'success',
+            source: 'dashboard',
+            message: `تم تحديث إعدادات AutoMod في ${client.guilds.cache.get(guildId)?.name}`
+        });
+        res.json({ ok: true });
+    });
+
+    app.post('/api/settings/automod/words', requireApiAuth, async (req, res) => {
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        const { guildId, word, remove } = (req.body || {}) as Record<string, any>;
+        if (!guildId || !client.guilds.cache.has(guildId)) return res.status(400).json({ error: 'سيرفر غير صالح' });
+        if (!word || typeof word !== 'string') return res.status(400).json({ error: 'كلمة غير صالحة' });
+        const settings = await getGuildSettings(guildId);
+        const words = Array.isArray(settings.badWords) ? [...settings.badWords] : [];
+        const index = words.findIndex((w) => w.toLowerCase() === word.trim().toLowerCase());
+        if (remove) {
+            if (index >= 0) words.splice(index, 1);
+        } else if (index < 0 && word.trim()) {
+            words.push(word.trim());
+        }
+        await updateGuildSettings(guildId, { badWords: words });
+        res.json({ ok: true, list: words });
+    });
+
+    // ---------- اللغة ----------
+    app.post('/api/settings/locale', requireApiAuth, async (req, res) => {
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        const { guildId, locale } = (req.body || {}) as Record<string, any>;
+        if (!guildId || !client.guilds.cache.has(guildId)) return res.status(400).json({ error: 'سيرفر غير صالح' });
+        const value = locale === 'en' ? 'en' : 'ar';
+        await updateGuildSettings(guildId, { locale: value });
+        res.json({ ok: true, locale: value });
     });
 
     // ---------- المستويات ----------
@@ -753,7 +806,7 @@ function buildApp() {
 
     // ---------- تشغيل ----------
     const server = app.listen(PORT, () => {
-        console.log(`🌐 لوحة التحكم تعمل على: http://localhost:${PORT}`);
+        logger.info(`🌐 لوحة التحكم تعمل على: http://localhost:${PORT}`);
     });
 
     return { app, server };

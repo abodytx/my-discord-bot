@@ -12,6 +12,8 @@ import type {
 } from 'discord.js';
 import type { Player } from 'discord-player';
 import type { AntiNukeEngine } from '../modules/antiNuke';
+import type { AutocompleteInteraction } from 'discord.js';
+import type { Middleware } from '../utils/middleware';
 
 // ---------------- إعدادات السيرفر ----------------
 export interface GuildSettings {
@@ -41,6 +43,8 @@ export interface GuildSettings {
     emojiLimit?: number;
     capsLimit?: number;
     warnActions?: { points: number; action: 'timeout' | 'kick' | 'ban'; durationMin?: number }[];
+    /** لغة السيرفر المفضلة (i18n) */
+    locale?: 'ar' | 'en';
 }
 
 // ---------------- بيانات التحذيرات ----------------
@@ -100,6 +104,12 @@ export interface CommandModule {
     cooldown?: number;
     category?: string;
     adminOnly?: boolean;
+    /** الأمر مخصص لمالك البوت فقط (يتطلب OWNER_ID في .env) */
+    ownerOnly?: boolean;
+    /** طبقات Middleware إضافية تُنفَّذ قبل الأمر */
+    middlewares?: Middleware[];
+    /** معالج الاقتراحات التلقائية (Autocomplete) */
+    autocomplete?: (interaction: AutocompleteInteraction) => Promise<unknown> | unknown;
     execute(interaction: ChatInputCommandInteraction, client: ExtendedClient): Promise<unknown> | unknown;
 }
 

@@ -1,3 +1,4 @@
+import { logger } from './utils/logger';
 // =====================================================
 // index.ts — نقطة الانطلاق الرئيسية (Enterprise Edition)
 // الهيكلية:
@@ -24,6 +25,7 @@ import { nowPlayingEmbed, controlRow } from './utils/musicUI';
 import { infoEmbed, errorEmbed } from './utils/embeds';
 import { sanitize } from './utils/logger';
 import { initStore } from './storage';
+import { restoreGiveaways } from './modules/giveaway';
 import type { CommandModule, EventModule, ExtendedClient } from './types';
 
 // =====================================================
@@ -71,7 +73,7 @@ async function setupExtractors(): Promise<void> {
         disableYTJSLog: true
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
     } as any);
-    console.log('🎵 تم تحميل محركات الموسيقى بنجاح');
+    logger.info('🎵 تم تحميل محركات الموسيقى بنجاح');
 }
 
 player.events.on('playerStart', (queue: GuildQueue, track: Track) => {
@@ -113,11 +115,11 @@ function notifyPlaybackError(queue: GuildQueue | null, error: Error): void {
 }
 
 player.events.on('error', (queue: GuildQueue, error: Error) => {
-    console.error('🎵 خطأ في مشغل الموسيقى:', error.message);
+    logger.error('🎵 خطأ في مشغل الموسيقى:', error.message);
     notifyPlaybackError(queue, error);
 });
 player.events.on('playerError', (queue: GuildQueue, error: Error) => {
-    console.error('🎵 خطأ أثناء تشغيل مقطع:', error.message);
+    logger.error('🎵 خطأ أثناء تشغيل مقطع:', error.message);
     notifyPlaybackError(queue, error);
 });
 
@@ -149,7 +151,7 @@ function loadFiles(dir: string, collection: Collection<string, CommandModule> | 
                     collection?.set((file as CommandModule).data.name, file as CommandModule);
                 }
             } catch (err) {
-                console.error(`❌ فشل تحميل ${fullPath}:`, (err as Error).message);
+                logger.error(`❌ فشل تحميل ${fullPath}:`, (err as Error).message);
             }
         }
     }
@@ -157,6 +159,9 @@ function loadFiles(dir: string, collection: Collection<string, CommandModule> | 
 
 loadFiles(path.join(__dirname, 'commands'), client.commands, false);
 loadFiles(path.join(__dirname, 'events'), null, true);
+
+// استعادة السحوبات النشطة عند إعادة التشغيل
+restoreGiveaways(client);
 
 // =====================================================
 // أحداث عامة
@@ -182,19 +187,23 @@ async function boot(): Promise<void> {
         await setupExtractors();
 
         if (!process.env.YOUTUBE_COOKIE) {
-            console.warn('⚠️ YOUTUBE_COOKIE غير مضبوط — سيتم استخدام SoundCloud كفال باك تلقائي.');
+            logger.warn('⚠️ YOUTUBE_COOKIE غير مضبوط — سيتم استخدام SoundCloud كفال باك تلقائي.');
         }
 
         const token = process.env.DISCORD_TOKEN || process.env.TOKEN;
         if (!token) {
-            console.error('❌ لم يتم العثور على توكن البوت! انسخ ملف .env.example إلى .env وضع التوكن فيه.');
+            logger.error('❌ لم يتم العثور على توكن البوت! انسخ ملف .env.example إلى .env وضع التوكن فيه.');
             process.exit(1);
         }
 
-        createDashboard({ client, player });
+        // عند التشغيل عبر ShardingManager: تشغيل الداشبورد على الشارد 0 فقط
+        // لتجنب تعارض المنافذ بين العمليات
+        if (!client.shard || client.shard.ids[0] === 0) {
+            createDashboard({ client, player });
+        }
         await client.login(token);
     } catch (err) {
-        console.error('❌ فشل تشغيل البوت:', err);
+        logger.error('❌ فشل تشغيل البوت:', err);
         emit('log', { level: 'error', source: 'boot', message: `فشل تشغيل البوت: ${(err as Error).message}` });
         process.exit(1);
     }
@@ -206,7 +215,7 @@ process.on('SIGINT', shutdown);
 process.on('SIGTERM', shutdown);
 
 function shutdown(): void {
-    console.log('👋 إيقاف التشغيل...');
+    logger.info('👋 إيقاف التشغيل...');
     client.destroy();
     process.exit(0);
 }

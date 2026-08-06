@@ -1,3 +1,4 @@
+import { logger, modActionLog } from '../../utils/logger';
 // =====================================================
 // أمر /clear - حذف عدد معين من الرسائل من القناة
 // =====================================================
@@ -68,8 +69,14 @@ export default {
                     )
                 ]
             });
+
+            await modActionLog(interaction.guild, 'clear', {
+                target: targetUser ? `${targetUser.tag} (${targetUser.id})` : undefined,
+                detail: `🧹 القناة: ${channel.name} — **${deleted.size}** رسالة`,
+                moderator: interaction.user.tag
+            });
         } catch (err) {
-            console.error(err);
+            logger.error(err);
             await interaction.editReply({
                 embeds: [
                     errorEmbed(

@@ -3,9 +3,12 @@
 // =====================================================
 
 import { SlashCommandBuilder } from 'discord.js';
-import type { ChatInputCommandInteraction } from 'discord.js';
+import type { ChatInputCommandInteraction, AutocompleteInteraction } from 'discord.js';
 import type { CommandModule, ExtendedClient } from '../../types';
 import { errorEmbed, infoEmbed } from '../../utils/embeds';
+
+// مستويات الصوت المقترحة في الاقتراحات التلقائية
+const VOLUME_PRESETS = [25, 50, 75, 100];
 
 export default {
     data: new SlashCommandBuilder()
@@ -18,8 +21,17 @@ export default {
                 .setMinValue(1)
                 .setMaxValue(100)
                 .setRequired(true)
+                .setAutocomplete(true)
         ),
     category: 'music',
+
+    // اقتراحات تلقائية لمستويات الصوت
+    async autocomplete(interaction: AutocompleteInteraction) {
+        const focused = interaction.options.getFocused(true);
+        if (focused.name !== 'المستوى') return;
+        const matches = VOLUME_PRESETS.map((v) => ({ name: `${v}%`, value: v }));
+        await interaction.respond(matches);
+    },
 
     async execute(interaction: ChatInputCommandInteraction, client: ExtendedClient) {
         const queue = client.player?.nodes.get(interaction.guildId!);

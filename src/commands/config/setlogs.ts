@@ -36,6 +36,18 @@ export default {
                         .setRequired(true)
                 )
         )
+        .addSubcommand((sub) =>
+            sub
+                .setName('ticket')
+                .setDescription('قناة لوقات التذاكر (فتح/إغلاق/استلام)')
+                .addChannelOption((opt) =>
+                    opt
+                        .setName('القناة')
+                        .setDescription('قناة اللوقات')
+                        .addChannelTypes(ChannelType.GuildText)
+                        .setRequired(true)
+                )
+        )
         .setDefaultMemberPermissions(PermissionFlagsBits.ManageGuild),
     cooldown: 3,
 
@@ -55,6 +67,11 @@ export default {
             await updateGuildSettings(interaction.guild.id, { modLogChannelId: channel.id });
             await interaction.reply({
                 embeds: [successEmbed('تم الحفظ', `سيتم إرسال لوقات الإدارة إلى ${channel}.`)]
+            });
+        } else if (subcommand === 'ticket') {
+            await updateGuildSettings(interaction.guild.id, { ticketLogChannelId: channel.id });
+            await interaction.reply({
+                embeds: [successEmbed('تم الحفظ', `سيتم إرسال لوقات التذاكر إلى ${channel}.`)]
             });
         } else {
             await updateGuildSettings(interaction.guild.id, { memberLogChannelId: channel.id });

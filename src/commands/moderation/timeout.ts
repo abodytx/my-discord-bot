@@ -1,3 +1,4 @@
+import { logger, modActionLog } from '../../utils/logger';
 // =====================================================
 // أمر /mute - إسكات عضو مؤقتاً باستخدام نظام Timeout المدمج في ديسكورد
 // =====================================================
@@ -74,8 +75,14 @@ export default {
                     )
                 ]
             });
+            await modActionLog(interaction.guild, 'timeout', {
+                target: `${targetUser.tag} (${targetUser.id})`,
+                reason,
+                detail: `⏱️ المدة: **${durationInput}**`,
+                moderator: interaction.user.tag
+            });
         } catch (err) {
-            console.error(err);
+            logger.error(err);
             await interaction.reply({
                 embeds: [errorEmbed('فشلت العملية', 'حدث خطأ أثناء محاولة إسكات هذا العضو.')],
                 ephemeral: true

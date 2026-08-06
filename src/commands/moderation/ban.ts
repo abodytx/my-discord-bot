@@ -1,3 +1,4 @@
+import { logger, modActionLog } from '../../utils/logger';
 // =====================================================
 // أمر /ban - حظر عضو من السيرفر
 // =====================================================
@@ -69,8 +70,14 @@ export default {
             await interaction.reply({
                 embeds: [successEmbed('تم الحظر', `تم حظر **${targetUser.tag}**.\n**السبب:** ${reason}`)]
             });
+            await modActionLog(interaction.guild, 'ban', {
+                target: `${targetUser.tag} (${targetUser.id})`,
+                reason,
+                detail: deleteDays ? `🗑️ حُذفت رسائل آخر ${deleteDays} يوم` : undefined,
+                moderator: interaction.user.tag
+            });
         } catch (err) {
-            console.error(err);
+            logger.error(err);
             await interaction.reply({
                 embeds: [errorEmbed('فشلت العملية', 'حدث خطأ أثناء محاولة حظر هذا العضو.')],
                 ephemeral: true

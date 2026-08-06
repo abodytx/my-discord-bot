@@ -1,3 +1,4 @@
+import { logger } from '../../utils/logger';
 // =====================================================
 // أمر /play - تشغيل أغنية في الروم الصوتي
 // =====================================================
@@ -107,7 +108,7 @@ export default {
                 const e = err as Error;
                 const canFallback = hasYouTubeCookie() && !isYouTubeUrl(query);
                 if (canFallback) {
-                    console.warn('فشل بث يوتيوب، تحويل تلقائي إلى SoundCloud:', e.message);
+                    logger.warn('فشل بث يوتيوب، تحويل تلقائي إلى SoundCloud:', e.message);
                     client.player!.queues.get(guild.id)?.delete();
                     const fallback = (await searchSoundCloud(client.player!, query, {
                         requestedBy: interaction.user
@@ -158,7 +159,7 @@ export default {
             }
         } catch (err) {
             const e = err as Error;
-            console.error('Play error:', err);
+            logger.error('Play error:', err);
             await interaction.followUp({
                 embeds: [errorEmbed('تعذر التشغيل', `حدث خطأ: ${e.message}`)]
             });

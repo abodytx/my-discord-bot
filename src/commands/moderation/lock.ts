@@ -1,3 +1,4 @@
+import { logger, modActionLog } from '../../utils/logger';
 // =====================================================
 // أمر /lock - قفل القناة الحالية عن الأعضاء
 // =====================================================
@@ -34,8 +35,13 @@ export default {
             await interaction.reply({
                 embeds: [successEmbed('🔒 تم قفل القناة', `تم قفل ${channel}.\n**السبب:** ${reason}`)]
             });
+            await modActionLog(interaction.guild, 'lock', {
+                detail: `🔒 القناة: ${channel.name}`,
+                reason,
+                moderator: interaction.user.tag
+            });
         } catch (err) {
-            console.error(err);
+            logger.error(err);
             await interaction.reply({
                 embeds: [errorEmbed('فشلت العملية', 'تعذر قفل القناة. تأكد من صلاحيات البوت.')],
                 ephemeral: true

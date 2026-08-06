@@ -146,6 +146,42 @@
             <div id="whitelistBox" class="hint">لا توجد عناصر في القائمة البيضاء.</div>
           </div>
         </div>
+        <div class="panel">
+          <h3><i class="fa-solid fa-robot"></i> AutoMod — الفلترة التلقائية</h3>
+          <div class="grid grid-3" style="gap:12px">
+            <div>
+              <label>الكلمات المحظورة (مفعلة)</label>
+              <label class="toggle"><input type="checkbox" id="amBadWordsEnabled"><span class="slider"></span></label>
+              <label style="margin-top:12px">إضافة كلمة</label>
+              <div class="row">
+                <input id="amNewWord" type="text" placeholder="كلمة..." style="flex:1;margin:0">
+                <button class="btn btn-sm btn-green" onclick="addAutoWord()">إضافة</button>
+              </div>
+              <div id="amWordsBox" class="hint" style="margin-top:8px">لا توجد كلمات بعد.</div>
+            </div>
+            <div>
+              <label>حد الإشارات (Mentions)</label>
+              <input type="number" id="amMentionLimit" min="0" value="5">
+              <label>حد الإيموجي</label>
+              <input type="number" id="amEmojiLimit" min="0" value="10">
+              <label>حد الحروف الكبيرة % (0 = معطّل)</label>
+              <input type="number" id="amCapsLimit" min="0" value="0">
+            </div>
+            <div>
+              <label>حد نقاط التحذير (0 = إيقاف)</label>
+              <input type="number" id="amWarnPoints" min="0" value="0">
+              <label>الإجراء عند الوصول للحد</label>
+              <select id="amWarnAction">
+                <option value="timeout">كتم مؤقت</option>
+                <option value="kick">طرد</option>
+                <option value="ban">حظر</option>
+              </select>
+              <label>مدة الكتم (دقيقة، للكتم فقط)</label>
+              <input type="number" id="amWarnDuration" min="1" value="60">
+            </div>
+          </div>
+          <button class="btn btn-block" style="margin-top:14px" onclick="saveAutoMod()"><i class="fa-solid fa-floppy-disk"></i> حفظ إعدادات AutoMod</button>
+        </div>
       </section>
 
       <!-- ===== Welcome ===== -->
@@ -302,6 +338,16 @@
             <label>قناة رسائل الترقي</label>
             <select id="levelChannel"></select>
             <button class="btn btn-block btn-green" onclick="saveLevels()"><i class="fa-solid fa-floppy-disk"></i> حفظ</button>
+          </div>
+          <div class="panel">
+            <h3><i class="fa-solid fa-language"></i> لغة البوت</h3>
+            <p class="hint">لغة ردود البوت وأزراره في هذا السيرفر.</p>
+            <label>اللغة</label>
+            <select id="botLocale">
+              <option value="ar">العربية</option>
+              <option value="en">English</option>
+            </select>
+            <button class="btn btn-block btn-magenta" onclick="saveLocale()"><i class="fa-solid fa-floppy-disk"></i> حفظ اللغة</button>
           </div>
         </div>
       </section>

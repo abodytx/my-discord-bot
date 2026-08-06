@@ -1,3 +1,4 @@
+import { logger } from './utils/logger';
 // =====================================================
 // هذا الملف مسؤول عن "تسجيل" الأوامر (Slash Commands) لدى ديسكورد
 // يجب تشغيله مرة واحدة بعد كل تعديل/إضافة أمر جديد
@@ -26,7 +27,7 @@ function collectCommands(dir: string): void {
                 const command = (raw.default || raw) as CommandModule;
                 if (command?.data) commands.push(command.data.toJSON());
             } catch (err) {
-                console.error(`⚠️ تعذر تحميل أمر ${fullPath}:`, (err as Error).message);
+                logger.error(`⚠️ تعذر تحميل أمر ${fullPath}:`, (err as Error).message);
             }
         }
     }
@@ -39,7 +40,7 @@ const clientId = process.env.CLIENT_ID;
 const guildId = process.env.GUILD_ID;
 
 if (!token || !clientId) {
-    console.error('❌ تأكد من وجود DISCORD_TOKEN و CLIENT_ID في ملف .env');
+    logger.error('❌ تأكد من وجود DISCORD_TOKEN و CLIENT_ID في ملف .env');
     process.exit(1);
 }
 
@@ -47,7 +48,7 @@ const rest = new REST().setToken(token);
 
 (async () => {
     try {
-        console.log(`🔄 جاري تسجيل ${commands.length} أمر...`);
+        logger.info(`🔄 جاري تسجيل ${commands.length} أمر...`);
 
         let data: unknown[];
         if (guildId) {
@@ -55,14 +56,14 @@ const rest = new REST().setToken(token);
             data = (await rest.put(Routes.applicationGuildCommands(clientId, guildId), {
                 body: commands
             })) as unknown[];
-            console.log(`✅ تم تسجيل ${data.length} أمر بنجاح على السيرفر المحدد.`);
+            logger.info(`✅ تم تسجيل ${data.length} أمر بنجاح على السيرفر المحدد.`);
         } else {
             // تسجيل عالمي (قد يستغرق حتى ساعة للظهور)
             data = (await rest.put(Routes.applicationCommands(clientId), { body: commands })) as unknown[];
-            console.log(`✅ تم تسجيل ${data.length} أمر بنجاح بشكل عالمي.`);
+            logger.info(`✅ تم تسجيل ${data.length} أمر بنجاح بشكل عالمي.`);
         }
     } catch (error) {
-        console.error('❌ حدث خطأ أثناء تسجيل الأوامر:', error);
+        logger.error('❌ حدث خطأ أثناء تسجيل الأوامر:', error);
         process.exit(1);
     }
 })();

@@ -1,3 +1,4 @@
+import { logger, modActionLog } from '../../utils/logger';
 // =====================================================
 // أمر /kick - طرد عضو من السيرفر
 // =====================================================
@@ -57,8 +58,13 @@ export default {
             await interaction.reply({
                 embeds: [successEmbed('تم الطرد', `تم طرد **${targetUser.tag}**.\n**السبب:** ${reason}`)]
             });
+            await modActionLog(interaction.guild, 'kick', {
+                target: `${targetUser.tag} (${targetUser.id})`,
+                reason,
+                moderator: interaction.user.tag
+            });
         } catch (err) {
-            console.error(err);
+            logger.error(err);
             await interaction.reply({
                 embeds: [errorEmbed('فشلت العملية', 'حدث خطأ أثناء محاولة طرد هذا العضو.')],
                 ephemeral: true

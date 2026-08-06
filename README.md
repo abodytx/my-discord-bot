@@ -8,15 +8,18 @@
 
 | النظام | الوصف |
 |---|---|
-| 🛡️ الإدارة | ban, kick, mute/timeout, unban, clear, lock, unlock, slowmode, warn, warnings, unwarn |
+| 🛡️ الإدارة | ban, kick, mute/timeout, unban, clear, lock, unlock, slowmode, warn, warnings, unwarn — **كلها تُسجل في Mod Log** |
+| 🤖 AutoMod | فلترة تلقائية: كلمات ممنوعة، حروف كبيرة، إشارات، إيموجي + نظام نقاط تحذير (كتم/طرد/حظر) + لوحة تحكم كاملة |
 | 🚨 الحماية الذكية | **Anti-Nuke** (حظر/استعادة تلقائية عند حذف القنوات/الرتب أو الحظر الجماعي) + Anti-Spam (كتم تلقائي) + Anti-Link |
 | 🎵 الموسيقى | play, skip, stop, pause, resume, nowplaying, queue, volume + أزرار تحكم تفاعلية + فال باك تلقائي لـ SoundCloud |
-| 🎫 التذاكر | فتح/إغلاق/استلام التذاكر + إدارة كاملة من لوحة التحكم |
+| 🎫 التذاكر | فتح/إغلاق/استلام + تأكيد إغلاق + **نسخة نصية DM** + لوقات + صلاحيات فريق الدعم + إدارة من اللوحة |
+| 🎉 السحوبات | start/end/reroll بأزرار مشاركة وعداد حي + حفظ واسترجاع عند إعادة التشغيل |
 | 🪙 الاقتصاد | /daily /balance /coinflip /slots /ecotop + تعديل الأرصدة من اللوحة |
-| 📈 المستويات | نظام XP تلقائي + rank + leaderboard + رسائل ترقي |
+| 📈 المستويات | نظام XP تلقائي + **بطاقة Rank رسمية (Canvas)** + leaderboard + رسائل ترقي |
 | 👋 الترحيب | بطاقات **Canvas** بخلفيات مخصصة (رفع من اللوحة) + ترحيب ووداع مخصصان + رتبة تلقائية |
-| 📝 اللوقات | حذف/تعديل الرسائل، إنشاء/حذف القنوات والرتب، انضمام/مغادرة، حظر، ويب هوك |
-| 🌐 لوحة تحكم | SPA بمظهر Cyberpunk + **Live Console** (SSE) + رسوم لحظية (CPU/RAM/Ping) + مصادقة |
+| 🌐 اللغة | دعم **العربية والإنجليزية** عبر `/locale` (رسائل وأزرار AutoMod والسحوبات) |
+| 📝 اللوقات | حذف/تعديل الرسائل، إنشاء/حذف القنوات والرتب، انضمام/مغادرة، حظر/فك حظر، ويب هوك |
+| 🌐 لوحة تحكم | SPA بمظهر Cyberpunk + **Live Console** (SSE) + رسوم لحظية + **تبويب AutoMod** + إعداد اللغة + مصادقة |
 | 🛡️ Crash Guard | منع توقف البوت نهائياً عند أي خطأ
 
 ---
@@ -29,8 +32,9 @@ discord-bot/
 │   ├── index.ts            ← نقطة الانطلاق (CrashGuard + تحميل آمن للأوامر/الأحداث)
 │   ├── deploy-commands.ts  ← تسجيل الأوامر لدى ديسكورد
 │   ├── commands/           ← 42 أمراً مقسمة: moderation, economy, music, roles, info, ticket, config, fun
-│   ├── events/             ← 13 حدثاً (محمّلة آمنة عبر CrashGuard)
-│   ├── modules/            ← antiNuke, economy, welcomeCards, liveHub, crashGuard
+│   ├── events/             ← 17 حدثاً (محمّلة آمنة عبر CrashGuard)
+│   ├── modules/            ← antiNuke, autoMod, giveaway, welcomeCards, rankCards, ticketTranscript, liveHub, crashGuard
+│   ├── i18n/               ← الترجمات (عربية/إنجليزية) + getLocale/t
 │   ├── storage/            ← طبقة تخزين موحدة (MongoDB / JSON + Cache)
 │   │   ├── mongoStore.ts   ← التنفيذ الإنتاجي (Mongoose)
 │   │   ├── jsonStore.ts    ← التنفيذ المتوافق مع البيانات القديمة
@@ -115,7 +119,11 @@ npm test                 # تشغيل اختبارات Vitest
 | `/setautorole الرتبة:@عضو` | الرتبة التلقائية للأعضاء الجدد |
 | `/setlogs mod القناة:#لوقات` | قناة لوقات الإدارة |
 | `/setlogs members القناة:#أعضاء` | قناة لوقات الأعضاء |
+| `/setlogs ticket القناة:#لوقات` | قناة لوقات التذاكر |
 | `/setprotection النظام:Anti-Spam تفعيل:true` | تفعيل الحماية من السبام |
+| `/automod` | إعداد AutoMod (كلمات/حدود/إجراءات) |
+| `/giveaway start` | بدء سحب بجائزة ومدة وفائزين |
+| `/locale` | تغيير لغة السيرفر (عربية/إنجليزية) |
 | `/leveltoggle تفعيل:true` | تفعيل نظام المستويات (XP) |
 | `/ticket-setup` | إرسال رسالة فتح التذاكر في القناة الحالية |
 | `/daily` | مكافأة يومية (200 🪙) |
@@ -166,6 +174,22 @@ pm2 save
 ```
 
 ⚠️ لا ترفع ملف `.env` إلى GitHub — تمت إضافته إلى `.gitignore`.
+
+---
+
+## 🐳 النشر عبر Docker (موصى به للخوادم VPS)
+
+```bash
+cp .env.example .env   # عدّل بياناتك أولاً
+docker compose up -d --build
+```
+
+- يعيد التشغيل تلقائياً (`restart: unless-stopped`).
+- مجلدات `data/` و`logs/` مثبتة كـ Volumes فتبقى بعد تحديث الصورة.
+- فحص الصحة عبر `/healthz` تلقائياً.
+- اللوحة على `http://localhost:3000`.
+
+> البناء متعدد المراحل: يُثبت أدوات التجميع فقط في مرحلة البناء (لـ canvas)، فتخرج صورة التشغيل صغيرة وآمنة.
 
 ---
 

@@ -1,3 +1,4 @@
+import { logger } from '../utils/logger';
 // =====================================================
 // فبريك التخزين — يختار التنفيذ حسب DB_URI
 //   - DB_URI موجود  → MongoDB (Mongoose) + Cache
@@ -19,10 +20,10 @@ export async function initStore(): Promise<DataStore> {
         const mongo = new MongoStore();
         await mongo.connect(uri);
         store = withCache(mongo);
-        console.log('🗄️ قاعدة البيانات: MongoDB متصلة');
+        logger.info('🗄️ قاعدة البيانات: MongoDB متصلة');
     } else {
         store = withCache(JsonStore);
-        console.warn('⚠️ DB_URI غير مضبوط — استخدام تخزين JSON المؤقت. اضبط DB_URI للاستخدام الإنتاجي.');
+        logger.warn('⚠️ DB_URI غير مضبوط — استخدام تخزين JSON المؤقت. اضبط DB_URI للاستخدام الإنتاجي.');
     }
     return store;
 }

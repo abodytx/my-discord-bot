@@ -127,6 +127,7 @@ html, body {
 /* ---------- Cards ---------- */
 .grid { display: grid; gap: 18px; }
 .grid-2 { grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); }
+.grid-3 { grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); }
 .grid-4 { grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); }
 
 .stat-card {

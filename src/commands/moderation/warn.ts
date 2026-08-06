@@ -7,6 +7,7 @@ import type { ChatInputCommandInteraction } from 'discord.js';
 import type { CommandModule, ExtendedClient } from '../../types';
 import { successEmbed, errorEmbed } from '../../utils/embeds';
 import { addWarning, getWarnings } from '../../utils/warnings';
+import { modActionLog } from '../../utils/logger';
 
 export default {
     data: new SlashCommandBuilder()
@@ -64,6 +65,13 @@ export default {
                     `تم تحذير **${target.tag}**.\n**السبب:** ${reason}\n📋 عدد تحذيرات العضو: **${count}**`
                 )
             ]
+        });
+
+        await modActionLog(interaction.guild, 'warn', {
+            target: `${target.tag} (${target.id})`,
+            reason,
+            detail: `📋 عدد التحذيرات الآن: **${count}**`,
+            moderator: interaction.user.tag
         });
     }
 } satisfies CommandModule;

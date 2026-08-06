@@ -5,6 +5,7 @@ coverage/
 .env.local
 config.json
 data/*.json
+data/transcripts/
 npm-debug.log
 *.log
 logs/

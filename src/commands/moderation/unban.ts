@@ -1,3 +1,4 @@
+import { logger, modActionLog } from '../../utils/logger';
 // =====================================================
 // أمر /unban - فك الحظر عن عضو
 // =====================================================
@@ -41,8 +42,12 @@ export default {
                     successEmbed('تم فك الحظر', `تم فك الحظر عن **${bannedUser.user.tag}** (${bannedUser.user.id}).`)
                 ]
             });
+            await modActionLog(interaction.guild, 'unban', {
+                target: `${bannedUser.user.tag} (${bannedUser.user.id})`,
+                moderator: interaction.user.tag
+            });
         } catch (err) {
-            console.error(err);
+            logger.error(err);
             await interaction.reply({
                 embeds: [errorEmbed('فشلت العملية', 'حدث خطأ أثناء محاولة فك الحظر.')],
                 ephemeral: true

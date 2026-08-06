@@ -1,3 +1,4 @@
+import { logger } from '../utils/logger';
 // =====================================================
 // حدث "guildMemberAdd": ترحيب + رتبة تلقائية + لوق انضمام
 // =====================================================
@@ -25,7 +26,7 @@ export default {
                     settings.welcomeChannelId
                 )) as GuildTextBasedChannel | null;
             } catch (e) {
-                console.error('تعذر الوصول لقناة الترحيب:', e);
+                logger.error('تعذر الوصول لقناة الترحيب:', e);
             }
         }
         if (!channel) {
@@ -54,7 +55,7 @@ export default {
                     });
                     attachment = { attachment: buffer, name: 'welcome.png' };
                 } catch (err) {
-                    console.error('خطأ في توليد بطاقة الترحيب:', err);
+                    logger.error('خطأ في توليد بطاقة الترحيب:', err);
                 }
 
                 const welcomeEmbed = new EmbedBuilder()
@@ -86,7 +87,7 @@ export default {
                     files: attachment ? [attachment] : []
                 });
             } catch (err) {
-                console.error('خطأ في إرسال رسالة الترحيب:', err);
+                logger.error('خطأ في إرسال رسالة الترحيب:', err);
             }
         }
 
@@ -96,7 +97,7 @@ export default {
                 const role = await member.guild.roles.fetch(settings.autoRoleId);
                 if (role) await member.roles.add(role);
             } catch (err) {
-                console.error('خطأ في إعطاء الرتبة التلقائية (تأكد أن رتبة البوت أعلى من الرتبة المستهدفة):', err);
+                logger.error('خطأ في إعطاء الرتبة التلقائية (تأكد أن رتبة البوت أعلى من الرتبة المستهدفة):', err);
             }
         }
 

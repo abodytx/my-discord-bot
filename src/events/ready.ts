@@ -1,3 +1,4 @@
+import { logger } from '../utils/logger';
 // =====================================================
 // حدث "ready": يعمل مرة واحدة عند نجاح تسجيل دخول البوت
 // =====================================================
@@ -9,9 +10,9 @@ export default {
     name: 'ready',
     once: true,
     execute(client: ExtendedClient) {
-        console.log(`✅ تم تسجيل الدخول بنجاح باسم: ${client.user?.tag}`);
-        console.log(`📊 البوت يعمل حالياً على ${client.guilds.cache.size} سيرفر`);
-        console.log(`🌐 لوحة التحكم: http://localhost:${process.env.PORT || 3000}`);
+        logger.info(`✅ تم تسجيل الدخول بنجاح باسم: ${client.user?.tag}`);
+        logger.info(`📊 البوت يعمل حالياً على ${client.guilds.cache.size} سيرفر`);
+        logger.info(`🌐 لوحة التحكم: http://localhost:${process.env.PORT || 3000}`);
 
         const updatePresence = () => {
             const serverCount = client.guilds.cache.size;

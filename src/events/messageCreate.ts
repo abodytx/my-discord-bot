@@ -1,3 +1,4 @@
+import { logger } from '../utils/logger';
 // =====================================================
 // حدث "messageCreate":
 // - Anti-Spam: حذف الرسائل المتكررة من نفس العضو
@@ -10,6 +11,7 @@ import type { ExtendedClient } from '../types';
 import { getGuildSettings } from '../utils/settings';
 import { errorEmbed, successEmbed } from '../utils/embeds';
 import { addXp, getLevelInfo } from '../utils/levels';
+import { checkAutoMod } from '../modules/autoMod';
 
 const SPAM_LIMIT = 5;
 const SPAM_INTERVAL = 7000;
@@ -46,7 +48,7 @@ export default {
                             embeds: [successEmbed('🎉 مستوى جديد!', `${message.author} وصل إلى المستوى **${level}**!`)]
                         });
                     } catch (err) {
-                        console.error('خطأ في إرسال رسالة المستوى:', err);
+                        logger.error('خطأ في إرسال رسالة المستوى:', err);
                     }
                 }
             }
@@ -54,6 +56,10 @@ export default {
 
         // تجاهل أعضاء الإدارة من أنظمة الحماية
         if (isStaff) return;
+
+        // ------------------ AutoMod المتقدم (كلمات/حروف/إشارات/إيموجي + WarnActions) ------------------
+        const autoModResult = await checkAutoMod(message, settings, client);
+        if (autoModResult) return;
 
         // ------------------ Anti-Link ------------------
         const linkRegex = /(https?:\/\/[^\s]+|discord\.gg\/[^\s]+|www\.[^\s]+)/i;
@@ -67,7 +73,7 @@ export default {
                 });
                 setTimeout(() => warn.delete().catch(() => {}), 5000);
             } catch (err) {
-                console.error('خطأ في نظام Anti-Link:', err);
+                logger.error('خطأ في نظام Anti-Link:', err);
             }
             return;
         }
@@ -116,7 +122,7 @@ export default {
                                 .catch(() => {});
                         }
                     } catch (err) {
-                        console.error('خطأ في نظام Anti-Spam:', err);
+                        logger.error('خطأ في نظام Anti-Spam:', err);
                     }
                 }
             }

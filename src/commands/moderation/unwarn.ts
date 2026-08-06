@@ -7,6 +7,7 @@ import type { ChatInputCommandInteraction } from 'discord.js';
 import type { CommandModule, ExtendedClient } from '../../types';
 import { successEmbed, errorEmbed } from '../../utils/embeds';
 import { getWarnings, removeWarning } from '../../utils/warnings';
+import { modActionLog } from '../../utils/logger';
 
 export default {
     data: new SlashCommandBuilder()
@@ -49,6 +50,12 @@ export default {
 
         await interaction.reply({
             embeds: [successEmbed('تمت الإزالة', `تم إزالة التحذير رقم **${num}** من **${target.tag}**.`)]
+        });
+
+        await modActionLog(interaction.guild, 'unwarn', {
+            target: `${target.tag} (${target.id})`,
+            reason: `إزالة التحذير رقم ${num}`,
+            moderator: interaction.user.tag
         });
     }
 } satisfies CommandModule;
